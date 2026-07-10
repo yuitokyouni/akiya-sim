@@ -140,12 +140,12 @@ const W=84,H=26,N=W*H;
 /* 地域（西→東）: 係数は様式化した実勢。実データ差替え対象
    price:価格水準 inc:所得指数 mig:年純流入率 ageS:所有者年齢シフト */
 const ZONES=[
- {n:"西多摩", price:0.40,inc:0.82,mig:-0.006,ageS:+12},
- {n:"多摩中部",price:0.58,inc:0.95,mig:-0.002,ageS:+5},
- {n:"多摩東部",price:0.78,inc:1.05,mig:+0.001,ageS:+2},
- {n:"区部西", price:0.98,inc:1.10,mig:+0.003,ageS:0},
- {n:"都心",   price:1.32,inc:1.30,mig:+0.006,ageS:-6},
- {n:"城東",   price:0.82,inc:0.96,mig:+0.004,ageS:-2}];
+ {n:"西多摩", price:0.40,inc:0.82,mig:0.003368,ageS:+12}, /* mig: data/zones_mig.csv 令和6年 */
+ {n:"多摩中部",price:0.58,inc:0.95,mig:0.004930,ageS:+5},
+ {n:"多摩東部",price:0.78,inc:1.05,mig:0.003882,ageS:+2},
+ {n:"区部西", price:0.98,inc:1.10,mig:0.005499,ageS:0},
+ {n:"都心",   price:1.32,inc:1.30,mig:0.004810,ageS:-6},
+ {n:"城東",   price:0.82,inc:0.96,mig:0.006160,ageS:-2}];
 /* 本土部の様式化シルエット: x ごとの上下境界（山地の西は細く、区部で膨らむ） */
 const zone=new Int8Array(N).fill(-1);
 { const mid=13;
@@ -338,7 +338,7 @@ function refresh(){
       <div style="color:var(--ink2)">${Z.n}</div>
       <div class="num"><span style="color:var(--a)">${(zA[k]*100).toFixed(0)}%</span> →
       <span style="color:var(--b)">${(zB[k]*100).toFixed(0)}%</span></div></div>`).join("");
-  g("prov").textContent=`run: seed=${A.seed} / tax=${pol.tax}% / sub=${pol.sub}万円 / year=${A.year} / model=v0.3-tokyo-synthetic`;
+  g("prov").textContent=`run: seed=${A.seed} / tax=${pol.tax}% / sub=${pol.sub}万円 / year=${A.year} / model=v0.3.1-tokyo-mig-r6`;
 }
 
 /* ---------- 制御 ---------- */
