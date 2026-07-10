@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空き家ダイナミクス 東京都モデル v0.3 — 同一シード政策比較</title>
+<style>
+  :root{
+    --paper:#eef1f0; --panel:#ffffff; --ink:#22313a; --ink2:#5b6b74;
+    --line:#d3dad8;
+    --c-occ:#aeb9be;   /* 居住 */
+    --c-rent:#8fa8a0;  /* 賃貸中 */
+    --c-list:#d9a441;  /* 売出・募集中 */
+    --c-neg:#c04a2a;   /* 放置空き家 */
+    --c-demo:#e6e2d8;  /* 更地 */
+    --a:#22313a; --b:#c04a2a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+    font-size:14px;line-height:1.6}
+  .num{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+  header{padding:18px 22px 10px}
+  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em}
+  header p{margin:4px 0 0;color:var(--ink2);font-size:12.5px;max-width:70em}
+  .wrap{display:grid;grid-template-columns:280px 1fr;gap:14px;padding:0 22px 22px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px}
+  .panel h2{margin:0 0 10px;font-size:12px;color:var(--ink2);font-weight:700;letter-spacing:.08em}
+  .ctl{margin-bottom:14px}
+  .ctl label{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+  .ctl input[type=range]{width:100%;accent-color:var(--b)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:13px;padding:6px 14px;border:1px solid var(--ink);
+    background:var(--ink);color:#fff;border-radius:4px;cursor:pointer}
+  button.ghost{background:#fff;color:var(--ink)}
+  button:disabled{opacity:.4;cursor:default}
+  input[type=number]{font:inherit;width:90px;padding:4px 6px;border:1px solid var(--line);border-radius:4px}
+  .maps{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){.maps{grid-template-columns:1fr}}
+  .mapbox h3{margin:0 0 6px;font-size:13px;font-weight:700}
+  .mapbox h3 .tag{font-size:11px;font-weight:400;color:var(--ink2);margin-left:6px}
+  canvas.map{width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px;background:#fff}
+  .stats{display:flex;gap:16px;margin-top:6px;font-size:12px;color:var(--ink2)}
+  .stats b{color:var(--ink);font-size:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 0 2px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:11px;height:11px;border-radius:2px;display:inline-block;border:1px solid rgba(0,0,0,.12)}
+  #chart{width:100%;height:190px;border:1px solid var(--line);border-radius:4px;background:#fff;margin-top:14px}
+  .footnote{color:var(--ink2);font-size:11.5px;margin-top:8px}
+  .yr{font-size:22px;font-weight:700}
+  .prov{font-size:11px;color:var(--ink2);border-top:1px dashed var(--line);margin-top:12px;padding-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>空き家ダイナミクス 東京都モデル <span style="font-weight:400;color:var(--ink2)">— 合成データ・同一シード政策比較 v0.3</span></h1>
+  <p>所有者エージェント（相続・遠隔居住・共有名義）が毎年 {売却 / 賃貸 / 解体 / 放置} を選択します。
+     左右のワールドは<strong>同一の乱数系列</strong>で駆動され、差分はすべて右側の政策つまみに由来します。</p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <h2>実行</h2>
+    <div class="ctl">
+      <label>シード <input id="seed" class="num" type="number" value="42"></label>
+      <div class="row" style="margin-top:6px">
+        <button id="btnRun">▶ 実行</button>
+        <button id="btnStep" class="ghost">1年進める</button>
+        <button id="btnReset" class="ghost">リセット</button>
+      </div>
+    </div>
+    <h2>政策つまみ（右ワールドのみ）</h2>
+    <div class="ctl">
+      <label>空き家課税の強化 <span class="num" id="vTax">0.0%</span></label>
+      <input type="range" id="tax" min="0" max="3" step="0.1" value="0">
+      <div class="footnote">保有コストに資産価値比で加算。課税通知が所有者の意思決定を促す効果も含む</div>
+    </div>
+    <div class="ctl">
+      <label>解体補助金 <span class="num" id="vSub">0 万円</span></label>
+      <input type="range" id="sub" min="0" max="200" step="10" value="0">
+      <div class="footnote">解体費用（基準 250万円）から控除</div>
+    </div>
+    <div class="ctl">
+      <label>速度 <span class="num" id="vSpd">4 年/秒</span></label>
+      <input type="range" id="spd" min="1" max="20" step="1" value="4">
+    </div>
+    <h2>凡例</h2>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--c-occ)"></i>居住</span>
+      <span><i class="sw" style="background:var(--c-rent)"></i>賃貸中</span>
+      <span><i class="sw" style="background:var(--c-list)"></i>売出・募集中</span>
+      <span><i class="sw" style="background:var(--c-neg)"></i>放置空き家</span>
+      <span><i class="sw" style="background:var(--c-demo)"></i>更地</span>
+    </div>
+    <div class="prov" id="prov">run: —</div>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between;align-items:baseline">
+      <div class="yr num" id="year">0 年</div>
+      <div style="font-size:12px;color:var(--ink2)">東京都本土部（島嶼除く・様式化）・ 1 ステップ = 1 年 ・ ◦＝拠点駅</div>
+    </div>
+    <div class="maps" style="margin-top:10px">
+      <div class="mapbox">
+        <h3>ベースライン<span class="tag">政策なし</span></h3>
+        <canvas class="map" id="mapA" width="672" height="208"></canvas>
+        <div class="stats">
+          <span>空き家率 <b class="num" id="vacA">–</b></span>
+          <span>放置 <b class="num" id="negA">–</b></span>
+          <span>クラスタ指数 <b class="num" id="cluA">–</b></span>
+        </div>
+      </div>
+      <div class="mapbox">
+        <h3>介入ワールド<span class="tag" id="polTag">税 0% ・ 補助 0万円</span></h3>
+        <canvas class="map" id="mapB" width="672" height="208"></canvas>
+        <div class="stats">
+          <span>空き家率 <b class="num" id="vacB">–</b></span>
+          <span>放置 <b class="num" id="negB">–</b></span>
+          <span>クラスタ指数 <b class="num" id="cluB">–</b></span>
+        </div>
+      </div>
+    </div>
+    <div id="ztable" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px;font-size:11.5px"></div>
+    <canvas id="chart" width="960" height="190"></canvas>
+    <div class="footnote">実線＝空き家率（放置＋売出・募集）。黒＝ベースライン、朱＝介入ワールド。地域カードは 黒→朱 で両ワールドの地域別空き家率。
+      クラスタ指数 = 空き家近傍の空き家率 ÷ 全体空き家率（1 超で空間的な固まりを示す）。</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- 乱数（再現可能） ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;
+  let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;
+  return((t^t>>>14)>>>0)/4294967296}}
+
+/* ---------- 定数 ---------- */
+const W=84,H=26,N=W*H;
+/* 地域（西→東）: 係数は様式化した実勢。実データ差替え対象
+   price:価格水準 inc:所得指数 mig:年純流入率 ageS:所有者年齢シフト */
+const ZONES=[
+ {n:"西多摩", price:0.40,inc:0.82,mig:-0.006,ageS:+12},
+ {n:"多摩中部",price:0.58,inc:0.95,mig:-0.002,ageS:+5},
+ {n:"多摩東部",price:0.78,inc:1.05,mig:+0.001,ageS:+2},
+ {n:"区部西", price:0.98,inc:1.10,mig:+0.003,ageS:0},
+ {n:"都心",   price:1.32,inc:1.30,mig:+0.006,ageS:-6},
+ {n:"城東",   price:0.82,inc:0.96,mig:+0.004,ageS:-2}];
+/* 本土部の様式化シルエット: x ごとの上下境界（山地の西は細く、区部で膨らむ） */
+const zone=new Int8Array(N).fill(-1);
+{ const mid=13;
+  for(let x=0;x<W;x++){
+    const t=x/(W-1);
+    let h = 3.5 + 2.5*Math.sin(t*2.4) + 5.5*Math.max(0,t-0.55)/0.45; // 西で細く東で厚く
+    const wob = Math.sin(x*0.55)*0.8;
+    const z = x<13?0 : x<29?1 : x<43?2 : x<58?3 : x<69?4 : 5;
+    for(let y=0;y<H;y++){
+      if(Math.abs(y-mid-wob)<=h) zone[y*W+x]=z;
+    }
+    // 大田区方面の南への張り出し
+    if(x>72){for(let y=mid+Math.floor(h);y<Math.min(H,mid+Math.floor(h)+3);y++)zone[y*W+x]=5;}
+  }
+}
+const S_OCC=0,S_RENT=1,S_SALE=2,S_LIST=3,S_NEG=4,S_DEMO=5;
+const COLORS=["#aeb9be","#8fa8a0","#d9a441","#d9a441","#c04a2a","#e6e2d8"];
+const STATIONS=[[36,13],[52,12],[63,13],[74,12]]; // 立川・吉祥寺・新宿・東京駅相当
+const P={ // モデルパラメータ（後で実データキャリブレーション対象）
+  demoBase:250, landFrac:0.18, txCost:0.06, rentYield:0.045, horizon:10,
+  renovCost:150, holdCost:6, taxRelief:8,   // 万円 / 年（特例による軽減分＝解体で失う）
+  vacDecay:0.03, priceVacElast:1.2, deathK:0.09, deathMid:84,
+  moveOut:0.012, tenantLeave:0.07, upkeep:9, liqPref:0.07,
+  effort:38, hassle:25, choiceNoise:18
+};
+
+/* ---------- ワールド生成 ---------- */
+function makeWorld(seed,policy){
+  const rng=mulberry32(seed);
+  const loc=new Float32Array(N), q=new Float32Array(N), st=new Uint8Array(N);
+  const oAge=new Float32Array(N), oRemote=new Uint8Array(N), oCo=new Uint8Array(N);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x; if(zone[i]<0){st[i]=S_DEMO;continue;}       // 域外はマスク
+    const Z=ZONES[zone[i]];
+    let d=1e9; for(const[sx,sy]of STATIONS){const dx=x-sx,dy=y-sy;d=Math.min(d,Math.hypot(dx,dy));}
+    const stBonus=Math.max(0,0.28-0.045*d);                    // 駅近ボーナス
+    loc[i]=Z.price*(0.85+0.30*rng())+stBonus;                  // 立地係数＝地域価格×ばらつき＋駅近
+    q[i]=0.45+0.5*rng();
+    st[i]=rng()<0.86?S_OCC:(rng()<0.5?S_RENT:S_NEG);
+    oAge[i]=35+45*rng()+Z.ageS;                                 // 高齢化度の地域差
+    oRemote[i]=rng()<0.12?1:0; oCo[i]=1;
+  }
+  const attach=new Float32Array(N); for(let i=0;i<N;i++)attach[i]=15+20*rng();
+  return{seed,policy,rng,loc,q,st,oAge,oRemote,oCo,attach,year:0,
+    negYears:new Float32Array(N), hist:{vac:[],neg:[],clu:[]}};
+}
+
+/* ---------- 近傍空き家率 ---------- */
+function neighborVac(w){
+  const nv=new Float32Array(N), vac=i=>w.st[i]>=S_SALE&&w.st[i]<=S_NEG;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    let c=0,v=0;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+      if(!dx&&!dy)continue;
+      const nx=x+dx,ny=y+dy;
+      if(nx<0||ny<0||nx>=W||ny>=H)continue;
+      const j=ny*W+nx; if(zone[j]<0||w.st[j]===S_DEMO)continue;
+      c++; if(vac(j))v++;
+    }
+    nv[y*W+x]=c?v/c:0;
+  }
+  return nv;
+}
+
+/* ---------- 1年進める ---------- */
+function step(w){
+  const r=w.rng, pol=w.policy, nv=neighborVac(w);
+  const price=i=>1800*w.loc[i]*w.q[i]*Math.max(0.35,1-P.priceVacElast*nv[i]); // 万円
+  // 成約見込み（年あたり）：立地×品質が高く、近隣空き家が少ないほど埋まりやすい
+  const zDem=ZONES.map(Z=>Math.min(1.6,Math.max(0.60,1+18*Z.mig+0.35*(Z.inc-1))));
+  const match=i=>Math.min(0.9,Math.max(0.08,
+    (0.12+0.85*w.loc[i]*w.q[i]-0.5*nv[i])*zDem[zone[i]]));
+
+  for(let i=0;i<N;i++){
+    if(zone[i]<0||w.st[i]===S_DEMO)continue;
+
+    // 所有者の加齢・死亡 → 相続
+    w.oAge[i]+=1;
+    const pDeath=1/(1+Math.exp(-P.deathK*(w.oAge[i]-P.deathMid)));
+    if(r()<pDeath){
+      w.oAge[i]=Math.max(38,w.oAge[i]-31+8*(r()-0.5));
+      w.oRemote[i]=r()<0.55?1:0;
+      const u=r(); w.oCo[i]=u<0.5?1:(u<0.82?2:3); w.attach[i]=40+45*r();
+      if(w.st[i]===S_OCC)w.st[i]=S_NEG;            // 居住者＝所有者だった住戸は空く
+    }
+    // 転出・退去
+    if(w.st[i]===S_OCC&&r()<P.moveOut*Math.min(1.25,Math.max(0.4,1-30*ZONES[zone[i]].mig)))w.st[i]=S_NEG;
+    if(w.st[i]===S_RENT&&r()<P.tenantLeave)w.st[i]=S_NEG;
+
+    // 空き家所有者の意思決定（共有名義・遠隔居住は意思決定頻度を下げる）
+    if(w.st[i]>=S_SALE&&w.st[i]<=S_NEG){
+      w.q[i]=Math.max(0.05,w.q[i]-(w.st[i]===S_NEG?P.vacDecay:P.vacDecay*0.4));
+      w.negYears[i]+=(w.st[i]===S_NEG)?1:0;
+      const pDecide=Math.min(0.95,(1/w.oCo[i])*(w.oRemote[i]?0.45:1)*(1+0.25*pol.tax));
+      if(r()<pDecide){
+        const pv=price(i), m=match(i);
+        // 何もしない場合の10年コスト：保有費＋空き家課税＋劣化による資産減価
+        const holdTax=(P.holdCost+pol.tax/100*pv)*P.horizon;
+        const fade=Math.max(0.25,1-0.05*w.negYears[i]);
+        const uNeg=-holdTax-pv*P.vacDecay*P.horizon*0.5+w.attach[i]*fade;
+        // 行動には意思決定コスト（共有名義・遠隔で増加）
+        const eff=P.effort*w.oCo[i]*(w.oRemote[i]?1.5:1)*Math.max(0.25,1-0.07*w.negYears[i]);
+        // 売却：成約すれば保有コスト回避＋流動性選好。成約見込みで割引
+        const uSell=m*(holdTax+P.liqPref*pv)-P.hassle-eff;
+        // 賃貸：純収益×成約見込み − 品質次第の改修費
+        const uRent=m*(P.rentYield*pv-P.upkeep)*P.horizon
+                    -P.renovCost*(1-w.q[i])*2.0-eff;
+        // 解体：更地価値の一部＋保有コスト回避 − (解体費−補助金) − 特例喪失
+        const uDemo=pv*P.landFrac+holdTax*0.6-(P.demoBase-pol.sub)
+                    -P.taxRelief*P.horizon-eff;
+        const us=[["sale",uSell],["rent",uRent],["demo",uDemo],["neg",uNeg]];
+        let best=null,bv=-1e18;
+        for(const[k,v]of us){const vv=v+P.choiceNoise*(r()-0.5)*2;if(vv>bv){bv=vv;best=k;}}
+        if(best==="sale")w.st[i]=S_SALE;
+        else if(best==="rent")w.st[i]=S_LIST;
+        else if(best==="demo")w.st[i]=S_DEMO;
+        else w.st[i]=S_NEG;
+      }
+    }
+  }
+
+  // マッチング：売出・募集中の各物件が成約見込みに応じて埋まる
+  for(let i=0;i<N;i++){
+    if(zone[i]<0)continue;
+    if(w.st[i]===S_SALE||w.st[i]===S_LIST){
+      if(r()<match(i)){
+        if(w.st[i]===S_SALE){w.st[i]=S_OCC;w.oAge[i]=32+18*r();w.oRemote[i]=0;w.oCo[i]=1;w.q[i]=Math.min(1,w.q[i]+0.15);}
+        else{w.st[i]=S_RENT;w.q[i]=Math.min(1,w.q[i]+0.08);}
+      }
+    }
+  }
+
+  // 集計
+  let occ=0,vac=0,neg=0,tot=0;
+  for(let i=0;i<N;i++){if(zone[i]<0||w.st[i]===S_DEMO)continue;tot++;
+    if(w.st[i]>=S_SALE&&w.st[i]<=S_NEG){vac++;if(w.st[i]===S_NEG)neg++;}else occ++;}
+  const nv2=neighborVac(w);
+  let s=0,c=0;for(let i=0;i<N;i++)if(zone[i]>=0&&w.st[i]>=S_SALE&&w.st[i]<=S_NEG){s+=nv2[i];c++;}
+  const clu=(c&&vac/tot>0)?(s/c)/(vac/tot):0;
+  w.hist.vac.push(vac/tot);w.hist.neg.push(neg/tot);w.hist.clu.push(clu);
+  w.year++;
+}
+
+/* ---------- 描画 ---------- */
+function drawMap(w,cv){
+  const cx=cv.getContext("2d"),cw=cv.width/W,ch=cv.height/H;
+  cx.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    const i=y*W+x; if(zone[i]<0)continue;
+    cx.fillStyle=COLORS[w.st[i]];
+    cx.fillRect(x*cw,y*ch,cw-0.6,ch-0.6);
+  }
+  cx.fillStyle="#22313a";
+  for(const[sx,sy]of STATIONS){cx.beginPath();cx.arc((sx+.5)*cw,(sy+.5)*ch,4,0,7);cx.stroke();}
+}
+function drawChart(A,B){
+  const cv=document.getElementById("chart"),cx=cv.getContext("2d");
+  cx.clearRect(0,0,cv.width,cv.height);
+  const L=Math.max(A.hist.vac.length,1),pad=34;
+  const ymax=Math.max(0.25,...A.hist.vac,...B.hist.vac)*1.1;
+  cx.strokeStyle="#d3dad8";cx.fillStyle="#5b6b74";cx.font="10px ui-monospace";
+  for(let g=0;g<=4;g++){const yy=pad/2+(cv.height-pad)*(1-g/4);
+    cx.beginPath();cx.moveTo(pad,yy);cx.lineTo(cv.width-8,yy);cx.stroke();
+    cx.fillText((ymax*g/4*100).toFixed(0)+"%",4,yy+3);}
+  const line=(h,col)=>{cx.strokeStyle=col;cx.lineWidth=1.8;cx.beginPath();
+    h.forEach((v,i)=>{const xx=pad+(cv.width-pad-8)*i/Math.max(L-1,1);
+      const yy=pad/2+(cv.height-pad)*(1-v/ymax); i?cx.lineTo(xx,yy):cx.moveTo(xx,yy);});
+    cx.stroke();};
+  line(A.hist.vac,"#22313a");line(B.hist.vac,"#c04a2a");
+}
+const pct=v=>(v*100).toFixed(1)+"%";
+function refresh(){
+  drawMap(A,document.getElementById("mapA"));
+  drawMap(B,document.getElementById("mapB"));
+  drawChart(A,B);
+  const g=id=>document.getElementById(id), h=A.hist,h2=B.hist,L=h.vac.length;
+  g("year").textContent=A.year+" 年";
+  if(L){g("vacA").textContent=pct(h.vac[L-1]);g("negA").textContent=pct(h.neg[L-1]);
+    g("cluA").textContent=h.clu[L-1].toFixed(2);
+    g("vacB").textContent=pct(h2.vac[L-1]);g("negB").textContent=pct(h2.neg[L-1]);
+    g("cluB").textContent=h2.clu[L-1].toFixed(2);}
+  // 地域別空き家率
+  const zvac=(w)=>{const v=ZONES.map(()=>0),t=ZONES.map(()=>0);
+    for(let i=0;i<N;i++){const z=zone[i];if(z<0||w.st[i]===S_DEMO)continue;t[z]++;
+      if(w.st[i]>=S_SALE&&w.st[i]<=S_NEG)v[z]++;}
+    return v.map((x,k)=>t[k]?x/t[k]:0);};
+  const zA=zvac(A),zB=zvac(B);
+  document.getElementById("ztable").innerHTML=ZONES.map((Z,k)=>
+    `<div style="border:1px solid var(--line);border-radius:4px;padding:6px 8px">
+      <div style="color:var(--ink2)">${Z.n}</div>
+      <div class="num"><span style="color:var(--a)">${(zA[k]*100).toFixed(0)}%</span> →
+      <span style="color:var(--b)">${(zB[k]*100).toFixed(0)}%</span></div></div>`).join("");
+  g("prov").textContent=`run: seed=${A.seed} / tax=${pol.tax}% / sub=${pol.sub}万円 / year=${A.year} / model=v0.3-tokyo-synthetic`;
+}
+
+/* ---------- 制御 ---------- */
+let pol={tax:0,sub:0},A,B,timer=null;
+function reset(){
+  const seed=parseInt(document.getElementById("seed").value)||42;
+  pol={tax:parseFloat(tax.value),sub:parseInt(sub.value)};
+  A=makeWorld(seed,{tax:0,sub:0});
+  B=makeWorld(seed,pol);
+  document.getElementById("polTag").textContent=`税 ${pol.tax}% ・ 補助 ${pol.sub}万円`;
+  refresh();
+}
+function tick(){step(A);step(B);refresh();
+  if(A.year>=60){clearInterval(timer);timer=null;btnRun.textContent="▶ 実行";}}
+const tax=document.getElementById("tax"),sub=document.getElementById("sub"),spd=document.getElementById("spd");
+tax.oninput=()=>{document.getElementById("vTax").textContent=(+tax.value).toFixed(1)+"%";};
+sub.oninput=()=>{document.getElementById("vSub").textContent=sub.value+" 万円";};
+spd.oninput=()=>{document.getElementById("vSpd").textContent=spd.value+" 年/秒";
+  if(timer){clearInterval(timer);timer=setInterval(tick,1000/+spd.value);}};
+document.getElementById("btnRun").onclick=e=>{
+  if(timer){clearInterval(timer);timer=null;e.target.textContent="▶ 実行";}
+  else{if(A.year===0||A.year>=60)reset();timer=setInterval(tick,1000/+spd.value);e.target.textContent="⏸ 停止";}};
+document.getElementById("btnStep").onclick=()=>{if(!timer)tick();};
+document.getElementById("btnReset").onclick=()=>{if(timer){clearInterval(timer);timer=null;
+  document.getElementById("btnRun").textContent="▶ 実行";}reset();};
+reset();
+</script>
+</body>
+</html>
