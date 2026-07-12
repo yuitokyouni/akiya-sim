@@ -10,11 +10,17 @@
 | `zone_grid.gen.js` | ブラウザ/node 用 `ZONE_GRID` |
 | `cells_muni.csv` | セル↔区市町村コード |
 
+| `zones_vac_jyutaku2023.csv` | 6地域 住調2023 空き家率集計 |
+| `zones_vac.gen.js` | ブラウザ/node 用 `ZONES_VAC`（engine 初期化） |
+| `muni_vac_jyutaku2023.csv` | 区市町村別 住調2023 空き家率 |
+| `raw/jyutaku_1-2_total.xlsx` | 住調2023 第1-2表 原本（e-Stat） |
+
 再生成:
 
 ```bash
 python3 scripts/build_zones_mig.py
 python3 scripts/build_zone_grid.py
+python3 scripts/build_zones_vac_jyutaku2023.py
 ```
 
-N03 格子の説明: `docs/n03_zone_grid.md`
+N03 格子: `docs/n03_zone_grid.md` — 住調キャリブレーション: `docs/validation_jyutaku2023.md`

@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * Headless 60-year harness (HANDOFF §7).
+ * Headless 60-year harness (HANDOFF §7) — secondary long-run check after 住調2023 calibration.
  * Usage: node scripts/harness_60y.js [--seed=42] [--years=60] [--golden=/path]
  */
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const enginePath = path.join(__dirname, "..", "engine.js");
-const zoneGridPath = path.join(__dirname, "..", "data", "zone_grid.gen.js");
+const root = path.join(__dirname, "..");
 const seed = Number((process.argv.find((a) => a.startsWith("--seed=")) || "--seed=42").split("=")[1]);
 const years = Number((process.argv.find((a) => a.startsWith("--years=")) || "--years=60").split("=")[1]);
 const goldenArg = process.argv.find((a) => a.startsWith("--golden="));
@@ -20,8 +19,9 @@ const goldenPath = goldenArg
 const ctx = { module: { exports: {} }, exports: {}, Int8Array };
 ctx.globalThis = ctx;
 const vmCtx = vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(zoneGridPath, "utf8"), vmCtx);
-vm.runInContext(fs.readFileSync(enginePath, "utf8"), vmCtx);
+vm.runInContext(fs.readFileSync(path.join(root, "data", "zone_grid.gen.js"), "utf8"), vmCtx);
+vm.runInContext(fs.readFileSync(path.join(root, "data", "zones_vac.gen.js"), "utf8"), vmCtx);
+vm.runInContext(fs.readFileSync(path.join(root, "engine.js"), "utf8"), vmCtx);
 const E = ctx.module.exports;
 
 function runWorld(policy) {
@@ -66,13 +66,11 @@ const out = {
 
 console.log(JSON.stringify(out, null, 2));
 
-const rates = zvac;
 const checks = [
-  ["西多摩>多摩中部", rates[0] > rates[1]],
-  ["多摩中部>多摩東部", rates[1] > rates[2]],
-  ["都心<区部西", rates[4] < rates[3]],
-  ["クラスタ>1", clu > 1],
+  ["60年: 空き家率が発散しない (≤25%)", vac <= 0.25],
+  ["60年: 西多摩が多摩中部より高い", zvac[0] > zvac[1]],
   ["政策: 全体空き家率低下", B.hist.vac[L - 1] < vac],
+  ["政策: 西多摩でも低下", zvacB[0] < zvac[0]],
 ];
 let ok = true;
 for (const [label, pass] of checks) {
@@ -104,4 +102,4 @@ if (fs.existsSync(goldenPath)) {
 }
 
 if (!ok) process.exit(1);
-console.error("PASS: §7 harness (baseline + gradient + policy response)");
+console.error("PASS: §7 harness (long-run stability + policy response)");

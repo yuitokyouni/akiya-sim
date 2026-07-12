@@ -30,9 +30,9 @@ const COLORS=["#aeb9be","#8fa8a0","#d9a441","#d9a441","#c04a2a","#e6e2d8"];
 const STATIONS=[[36,13],[52,12],[63,13],[74,12]]; // 立川・吉祥寺・新宿・東京駅相当
 const P={ // モデルパラメータ（後で実データキャリブレーション対象）
   demoBase:250, landFrac:0.18, txCost:0.06, rentYield:0.045, horizon:10,
-  renovCost:150, holdCost:6, taxRelief:8,   // 万円 / 年（特例による軽減分＝解体で失う）
+  renovCost:150, holdCost:10, taxRelief:8,   // 万円 / 年（特例による軽減分＝解体で失う）
   vacDecay:0.03, priceVacElast:1.2, deathK:0.09, deathMid:84,
-  moveOut:0.012, tenantLeave:0.07, upkeep:9, liqPref:0.07,
+  moveOut:0.010, tenantLeave:0.065, upkeep:9, liqPref:0.10,
   effort:38, hassle:25, choiceNoise:18
 };
 
@@ -41,18 +41,35 @@ function makeWorld(seed,policy){
   const rng=mulberry32(seed);
   const loc=new Float32Array(N), q=new Float32Array(N), st=new Uint8Array(N);
   const oAge=new Float32Array(N), oRemote=new Uint8Array(N), oCo=new Uint8Array(N);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const i=y*W+x; if(zone[i]<0){st[i]=S_DEMO;continue;}       // 域外はマスク
-    const Z=ZONES[zone[i]];
-    let d=1e9; for(const[sx,sy]of STATIONS){const dx=x-sx,dy=y-sy;d=Math.min(d,Math.hypot(dx,dy));}
-    const stBonus=Math.max(0,0.28-0.045*d);                    // 駅近ボーナス
-    loc[i]=Z.price*(0.85+0.30*rng())+stBonus;                  // 立地係数＝地域価格×ばらつき＋駅近
-    q[i]=0.45+0.5*rng();
-    st[i]=rng()<0.86?S_OCC:(rng()<0.5?S_RENT:S_NEG);
-    oAge[i]=35+45*rng()+Z.ageS;                                 // 高齢化度の地域差
-    oRemote[i]=rng()<0.12?1:0; oCo[i]=1;
+  const ZV=(typeof ZONES_VAC!=="undefined"?ZONES_VAC:{rates:ZONES.map(()=>0.109),negFrac:ZONES.map(()=>0.45)});
+  const byZone=ZONES.map(()=>[]);
+  for(let i=0;i<N;i++) if(zone[i]>=0) byZone[zone[i]].push(i);
+  function shuffle(a){
+    for(let k=a.length-1;k>0;k--){const j=(rng()* (k+1))|0; const t=a[k]; a[k]=a[j]; a[j]=t;}
   }
-  const attach=new Float32Array(N); for(let i=0;i<N;i++)attach[i]=15+20*rng();
+  for(let z=0;z<ZONES.length;z++){
+    const idx=byZone[z]; shuffle(idx);
+    const nVac=Math.round((ZV.rates[z]||0.109)*idx.length);
+    const nNeg=Math.min(nVac, Math.round((ZV.negFrac[z]||0.45)*nVac));
+    for(let k=0;k<idx.length;k++){
+      const i=idx[k];
+      const Z=ZONES[z];
+      let d=1e9; for(const[sx,sy]of STATIONS){const dx=(i%W)-sx,dy=(i/W|0)-sy;d=Math.min(d,Math.hypot(dx,dy));}
+      const stBonus=Math.max(0,0.28-0.045*d);
+      loc[i]=Z.price*(0.85+0.30*rng())+stBonus;
+      q[i]=0.45+0.5*rng();
+      oAge[i]=35+45*rng()+Z.ageS;
+      oRemote[i]=rng()<0.12?1:0; oCo[i]=1;
+      if(k<nVac){
+        if(k<nNeg) st[i]=S_NEG;
+        else st[i]=rng()<0.45?S_SALE:S_LIST;
+      }else{
+        st[i]=rng()<0.88?S_OCC:S_RENT;
+      }
+    }
+  }
+  for(let i=0;i<N;i++) if(zone[i]<0) st[i]=S_DEMO;
+  const attach=new Float32Array(N); for(let i=0;i<N;i++)attach[i]=5+8*rng();
   return{seed,policy,rng,loc,q,st,oAge,oRemote,oCo,attach,year:0,
     negYears:new Float32Array(N), hist:{vac:[],neg:[],clu:[]}};
 }
@@ -81,7 +98,7 @@ function step(w){
   // 成約見込み（年あたり）：立地×品質が高く、近隣空き家が少ないほど埋まりやすい
   const zDem=ZONES.map(Z=>Math.min(1.6,Math.max(0.60,1+18*Z.mig+0.35*(Z.inc-1))));
   const match=i=>Math.min(0.9,Math.max(0.08,
-    (0.12+0.85*w.loc[i]*w.q[i]-0.5*nv[i])*zDem[zone[i]]));
+    (0.22+0.95*w.loc[i]*w.q[i]-0.30*nv[i])*zDem[zone[i]]));
 
   for(let i=0;i<N;i++){
     if(zone[i]<0||w.st[i]===S_DEMO)continue;
