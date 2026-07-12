@@ -88,20 +88,10 @@
   セル位置・高さはモデル出力の統計量（近傍空き家率・状態）であり、実在建物の位置を示しません。</div>
 
 <script src="engine.js"></script>
-<!-- MapboxOverlay は mapbox-gl 必須のため使わず、Deck を MapLibre と手動同期 -->
-<script type="importmap">
-{
-  "imports": {
-    "maplibre-gl": "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm",
-    "@deck.gl/core": "https://cdn.jsdelivr.net/npm/@deck.gl/core@9.0.35/+esm",
-    "@deck.gl/layers": "https://cdn.jsdelivr.net/npm/@deck.gl/layers@9.0.35/+esm",
-    "@deck.gl/geo-layers": "https://cdn.jsdelivr.net/npm/@deck.gl/geo-layers@9.0.35/+esm",
-    "@loaders.gl/core": "https://cdn.jsdelivr.net/npm/@loaders.gl/core@4.2.5/+esm",
-    "@loaders.gl/3d-tiles": "https://cdn.jsdelivr.net/npm/@loaders.gl/3d-tiles@4.2.5/+esm"
-  }
-}
-</script>
-<script type="module">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.35/dist.min.js"></script>
+<script>
+(function () {
 function showErr(msg) {
   const el = document.getElementById("js-err");
   el.textContent = msg;
@@ -110,13 +100,10 @@ function showErr(msg) {
 
 try {
   if (typeof AkiyaEngine === "undefined") throw new Error("engine.js が読み込めません。map.html と同じフォルダに engine.js があるか確認してください。");
+  if (typeof maplibregl === "undefined") throw new Error("maplibre-gl の読み込みに失敗しました");
+  if (typeof deck === "undefined") throw new Error("deck.gl の読み込みに失敗しました");
 
-  const maplibregl = (await import("maplibre-gl")).default;
-  if (!maplibregl?.Map) throw new Error("maplibre-gl の読み込みに失敗しました");
-  const { Deck } = await import("@deck.gl/core");
-  const { ColumnLayer } = await import("@deck.gl/layers");
-  const { Tile3DLayer } = await import("@deck.gl/geo-layers");
-  const { Tiles3DLoader } = await import("@loaders.gl/3d-tiles");
+  const { Deck, ColumnLayer, Tile3DLayer } = deck;
 
   const E = AkiyaEngine;
   const {
@@ -248,7 +235,6 @@ try {
       layers.push(new Tile3DLayer({
         id: "plateau-bldg",
         data: PLATEAU_URL,
-        loader: Tiles3DLoader,
         opacity: 0.35,
         onTileError: () => {},
       }));
@@ -409,6 +395,7 @@ try {
   console.error(err);
   showErr("初期化エラー: " + (err?.message || err) + "\n\nネットワークで CDN (jsdelivr) がブロックされていないか、DevTools Console を確認してください。");
 }
+})();
 </script>
 </body>
 </html>
