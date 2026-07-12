@@ -53,7 +53,7 @@
 <div id="js-err"></div>
 <aside id="panel">
   <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
-  <p>格子を東京都本土部へアフィン射影した統計的可視化。1セル≠1建物。</p>
+  <p>84×26 格子を N03 行政区域でマスクし、東京都本土部へアフィン射影。1セル≠1建物。</p>
   <label class="row">シード <input id="seed" type="number" value="42"></label>
   <label class="row">表示
     <span>
@@ -84,9 +84,10 @@
     <span><i class="sw" style="background:var(--c-demo)"></i>更地</span>
   </div>
 </aside>
-<div id="notice"><strong>様式化・統計的表示</strong> — 84×26 抽象格子を地理院タイル上へアフィン射影したものです。
+<div id="notice"><strong>様式化・統計的表示</strong> — 84×26 格子を N03 本土部マスクの上に地理院タイルへ射影したものです。
   セル位置・高さはモデル出力の統計量（近傍空き家率・状態）であり、実在建物の位置を示しません。</div>
 
+<script src="data/zone_grid.gen.js"></script>
 <script src="engine.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.35/dist.min.js"></script>

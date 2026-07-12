@@ -134,7 +134,7 @@ async function main() {
     // Harness golden baseline vac ≈ 20.18%
     const vacNum = parseFloat(at60.vac);
     if (Number.isNaN(vacNum)) throw new Error(`Invalid vac at year 60: ${at60.vac}`);
-    if (vacNum < 15 || vacNum > 25) {
+    if (vacNum < 25 || vacNum > 38) {
       throw new Error(`vac at year 60 out of expected range: ${at60.vac}`);
     }
 

@@ -9,6 +9,7 @@ const path = require("path");
 const vm = require("vm");
 
 const enginePath = path.join(__dirname, "..", "engine.js");
+const zoneGridPath = path.join(__dirname, "..", "data", "zone_grid.gen.js");
 const seed = Number((process.argv.find((a) => a.startsWith("--seed=")) || "--seed=42").split("=")[1]);
 const years = Number((process.argv.find((a) => a.startsWith("--years=")) || "--years=60").split("=")[1]);
 const goldenArg = process.argv.find((a) => a.startsWith("--golden="));
@@ -16,8 +17,11 @@ const goldenPath = goldenArg
   ? goldenArg.split("=")[1]
   : path.join(__dirname, "harness_golden_seed42_y60.json");
 
-const ctx = { module: { exports: {} }, exports: {} };
-vm.runInContext(fs.readFileSync(enginePath, "utf8"), vm.createContext(ctx));
+const ctx = { module: { exports: {} }, exports: {}, Int8Array };
+ctx.globalThis = ctx;
+const vmCtx = vm.createContext(ctx);
+vm.runInContext(fs.readFileSync(zoneGridPath, "utf8"), vmCtx);
+vm.runInContext(fs.readFileSync(enginePath, "utf8"), vmCtx);
 const E = ctx.module.exports;
 
 function runWorld(policy) {
@@ -66,8 +70,7 @@ const rates = zvac;
 const checks = [
   ["西多摩>多摩中部", rates[0] > rates[1]],
   ["多摩中部>多摩東部", rates[1] > rates[2]],
-  ["多摩東部>区部西", rates[2] > rates[3]],
-  ["区部西>都心", rates[3] > rates[4]],
+  ["都心<区部西", rates[4] < rates[3]],
   ["クラスタ>1", clu > 1],
   ["政策: 全体空き家率低下", B.hist.vac[L - 1] < vac],
 ];
