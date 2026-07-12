@@ -18,6 +18,7 @@
   /* filter は WebGL 地図を壊すので使わない — タイル側で暗くする */
   #map-wrap{position:absolute;inset:0}
   #map{width:100%;height:100%;background:#1a2332}
+  #deck-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   #panel{position:absolute;top:12px;left:12px;width:280px;background:var(--panel);border:1px solid var(--line);
     border-radius:8px;padding:14px;z-index:2;backdrop-filter:blur(6px)}
   #panel h1{margin:0 0 4px;font-size:15px;font-weight:700}
@@ -47,7 +48,7 @@
 </style>
 </head>
 <body>
-<div id="map-wrap"><div id="map"></div></div>
+<div id="map-wrap"><div id="map"></div><canvas id="deck-canvas"></canvas></div>
 <div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
 <div id="js-err"></div>
 <aside id="panel">
@@ -87,13 +88,11 @@
   セル位置・高さはモデル出力の統計量（近傍空き家率・状態）であり、実在建物の位置を示しません。</div>
 
 <script src="engine.js"></script>
-<!-- deck.gl/mapbox は内部で mapbox-gl を import する → maplibre-gl に差し替え -->
+<!-- MapboxOverlay は mapbox-gl 必須のため使わず、Deck を MapLibre と手動同期 -->
 <script type="importmap">
 {
   "imports": {
-    "mapbox-gl": "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm",
     "maplibre-gl": "https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm",
-    "@deck.gl/mapbox": "https://cdn.jsdelivr.net/npm/@deck.gl/mapbox@9.0.35/+esm",
     "@deck.gl/core": "https://cdn.jsdelivr.net/npm/@deck.gl/core@9.0.35/+esm",
     "@deck.gl/layers": "https://cdn.jsdelivr.net/npm/@deck.gl/layers@9.0.35/+esm",
     "@deck.gl/geo-layers": "https://cdn.jsdelivr.net/npm/@deck.gl/geo-layers@9.0.35/+esm",
@@ -114,7 +113,7 @@ try {
 
   const maplibregl = (await import("maplibre-gl")).default;
   if (!maplibregl?.Map) throw new Error("maplibre-gl の読み込みに失敗しました");
-  const { MapboxOverlay } = await import("@deck.gl/mapbox");
+  const { Deck } = await import("@deck.gl/core");
   const { ColumnLayer } = await import("@deck.gl/layers");
   const { Tile3DLayer } = await import("@deck.gl/geo-layers");
   const { Tiles3DLoader } = await import("@loaders.gl/3d-tiles");
@@ -179,7 +178,7 @@ try {
   let simPol = null;
   let playTimer = null;
   let plateauOn = false;
-  let overlay = null;
+  let deck = null;
 
   const map = new maplibregl.Map({
     container: "map",
@@ -216,14 +215,18 @@ try {
     document.getElementById("tile-warn").style.display = "block";
   });
 
-  overlay = new MapboxOverlay({ interleaved: true, layers: [] });
-
-  function currentSim() {
-    return view === "base" ? simBase : simPol;
+  function mapViewState() {
+    const c = map.getCenter();
+    return {
+      longitude: c.lng,
+      latitude: c.lat,
+      zoom: map.getZoom(),
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
+    };
   }
 
-  function renderLayers() {
-    if (!overlay) return;
+  function buildLayers() {
     const sim = currentSim();
     const yr = +document.getElementById("year").value;
     const layers = [];
@@ -250,7 +253,36 @@ try {
         onTileError: () => {},
       }));
     }
-    overlay.setProps({ layers });
+    return layers;
+  }
+
+  function syncDeck() {
+    if (!deck) return;
+    deck.setProps({ viewState: mapViewState(), layers: buildLayers() });
+  }
+
+  deck = new Deck({
+    canvas: "deck-canvas",
+    width: "100%",
+    height: "100%",
+    controller: false,
+    useDevicePixels: true,
+    viewState: {
+      longitude: 139.72,
+      latitude: 35.66,
+      zoom: 9.2,
+      pitch: 50,
+      bearing: -15,
+    },
+    layers: [],
+  });
+
+  function currentSim() {
+    return view === "base" ? simBase : simPol;
+  }
+
+  function renderLayers() {
+    syncDeck();
   }
 
   function statsFromSt(st) {
@@ -308,8 +340,14 @@ try {
     }, 0);
   }
 
+  map.on("move", syncDeck);
+  map.on("resize", () => {
+    if (deck) deck.setProps({ width: "100%", height: "100%" });
+    syncDeck();
+  });
+
   map.on("load", () => {
-    map.addControl(overlay);
+    syncDeck();
     runSimulation();
   });
 
