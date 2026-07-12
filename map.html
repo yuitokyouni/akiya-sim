@@ -314,15 +314,27 @@ try {
     const seed = +document.getElementById("seed").value || 42;
     const tax = +document.getElementById("tax").value;
     const sub = +document.getElementById("sub").value;
-    document.getElementById("btnRun").disabled = true;
-    document.getElementById("btnRun").textContent = "計算中…";
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+      document.getElementById("btnPlay").textContent = "アニメ";
+    }
+    const btnRun = document.getElementById("btnRun");
+    btnRun.disabled = true;
+    btnRun.textContent = "計算中…";
     setTimeout(() => {
-      simBase = simulate(seed, { tax: 0, sub: 0 }, 60);
-      simPol = simulate(seed, { tax, sub }, 60);
-      document.getElementById("year").value = "0";
-      document.getElementById("btnRun").disabled = false;
-      document.getElementById("btnRun").textContent = "▶ 60年実行";
-      refreshStats();
+      try {
+        simBase = simulate(seed, { tax: 0, sub: 0 }, 60);
+        simPol = simulate(seed, { tax, sub }, 60);
+        document.getElementById("year").value = "0";
+        refreshStats();
+      } catch (simErr) {
+        console.error(simErr);
+        showErr("シミュレーションエラー: " + (simErr?.message || simErr));
+      } finally {
+        btnRun.disabled = false;
+        btnRun.textContent = "▶ 60年実行";
+      }
     }, 0);
   }
 
@@ -334,9 +346,9 @@ try {
 
   map.on("load", () => {
     syncDeck();
-    runSimulation();
   });
 
+  // UI（シミュレーション）は地図タイル読込と独立 — init 成功時点で束縛・実行
   document.getElementById("year").oninput = refreshStats;
   document.getElementById("btnBase").onclick = () => {
     view = "base";
@@ -390,6 +402,8 @@ try {
     plateauOn = e.target.checked;
     renderLayers();
   };
+
+  runSimulation();
 
 } catch (err) {
   console.error(err);

@@ -1,0 +1,11 @@
+{
+  "name": "akiya-sim",
+  "private": true,
+  "scripts": {
+    "harness": "node scripts/harness_60y.js",
+    "smoke:map": "node scripts/smoke_map.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^22.15.0"
+  }
+}
