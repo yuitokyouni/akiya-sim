@@ -79,7 +79,7 @@
     <div class="ctl">
       <label>解体補助金 <span class="num" id="vSub">0 万円</span></label>
       <input type="range" id="sub" min="0" max="200" step="10" value="0">
-      <div class="footnote">解体費用（基準 250万円）から控除</div>
+      <div class="footnote">解体費用（基準220万円・地域係数あり）から控除。<strong>補助は解体選択時のみ</strong>効きます。</div>
     </div>
     <div class="ctl">
       <label>速度 <span class="num" id="vSpd">4 年/秒</span></label>
@@ -108,7 +108,8 @@
         <div class="stats">
           <span>空き家率 <b class="num" id="vacA">–</b></span>
           <span>放置 <b class="num" id="negA">–</b></span>
-          <span>クラスタ指数 <b class="num" id="cluA">–</b></span>
+          <span>更地 <b class="num" id="demoA">–</b></span>
+          <span>クラスタ <b class="num" id="cluA">–</b></span>
         </div>
       </div>
       <div class="mapbox">
@@ -117,7 +118,8 @@
         <div class="stats">
           <span>空き家率 <b class="num" id="vacB">–</b></span>
           <span>放置 <b class="num" id="negB">–</b></span>
-          <span>クラスタ指数 <b class="num" id="cluB">–</b></span>
+          <span>更地 <b class="num" id="demoB">–</b></span>
+          <span>クラスタ <b class="num" id="cluB">–</b></span>
         </div>
       </div>
     </div>
@@ -172,8 +174,10 @@ function refresh(){
   const g=id=>document.getElementById(id), h=A.hist,h2=B.hist,L=h.vac.length;
   g("year").textContent=A.year+" 年";
   if(L){g("vacA").textContent=pct(h.vac[L-1]);g("negA").textContent=pct(h.neg[L-1]);
+    g("demoA").textContent=pct((h.demo||[])[L-1]||0);
     g("cluA").textContent=h.clu[L-1].toFixed(2);
     g("vacB").textContent=pct(h2.vac[L-1]);g("negB").textContent=pct(h2.neg[L-1]);
+    g("demoB").textContent=pct((h2.demo||[])[L-1]||0);
     g("cluB").textContent=h2.clu[L-1].toFixed(2);}
   // 地域別空き家率
   const zvac=(w)=>{const v=ZONES.map(()=>0),t=ZONES.map(()=>0);

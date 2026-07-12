@@ -29,7 +29,7 @@ const S_OCC=0,S_RENT=1,S_SALE=2,S_LIST=3,S_NEG=4,S_DEMO=5;
 const COLORS=["#aeb9be","#8fa8a0","#d9a441","#d9a441","#c04a2a","#e6e2d8"];
 const STATIONS=[[36,13],[52,12],[63,13],[74,12]]; // 立川・吉祥寺・新宿・東京駅相当
 const P={ // モデルパラメータ（後で実データキャリブレーション対象）
-  demoBase:250, landFrac:0.18, txCost:0.06, rentYield:0.045, horizon:10,
+  demoBase:220, landFrac:0.21, txCost:0.06, rentYield:0.045, horizon:10,
   renovCost:150, holdCost:10, taxRelief:8,   // 万円 / 年（特例による軽減分＝解体で失う）
   vacDecay:0.03, priceVacElast:1.2, deathK:0.09, deathMid:84,
   moveOut:0.010, tenantLeave:0.065, upkeep:9, liqPref:0.10,
@@ -71,7 +71,7 @@ function makeWorld(seed,policy){
   for(let i=0;i<N;i++) if(zone[i]<0) st[i]=S_DEMO;
   const attach=new Float32Array(N); for(let i=0;i<N;i++)attach[i]=5+8*rng();
   return{seed,policy,rng,loc,q,st,oAge,oRemote,oCo,attach,year:0,
-    negYears:new Float32Array(N), hist:{vac:[],neg:[],clu:[]}};
+    negYears:new Float32Array(N), hist:{vac:[],neg:[],clu:[],demo:[]}};
 }
 
 /* ---------- 近傍空き家率 ---------- */
@@ -134,10 +134,15 @@ function step(w){
         // 賃貸：純収益×成約見込み − 品質次第の改修費
         const uRent=m*(P.rentYield*pv-P.upkeep)*P.horizon
                     -P.renovCost*(1-w.q[i])*2.0-eff;
-        // 解体：更地価値の一部＋保有コスト回避 − (解体費−補助金) − 特例喪失
-        const uDemo=pv*P.landFrac+holdTax*0.6-(P.demoBase-pol.sub)
-                    -P.taxRelief*P.horizon-eff;
-        const us=[["sale",uSell],["rent",uRent],["demo",uDemo],["neg",uNeg]];
+        // 解体：更地回収（低価格帯ほど土地比率↑）− 地域スケール解体費 − 補助
+        const demoCost = P.demoBase * (0.7 + 0.3 * ZONES[zone[i]].price);
+        const landVal = pv * P.landFrac * (0.8 + 0.35 * (1 - ZONES[zone[i]].price));
+        const uDemo = landVal + holdTax * 0.6 - (demoCost - pol.sub)
+                    - P.taxRelief * P.horizon - eff;
+        // 放置初期（4年未満）は売却・賃貸中心。長期放置から解体が現実的に
+        const us = w.st[i] === S_NEG && w.negYears[i] < 4
+          ? [["sale", uSell], ["rent", uRent], ["neg", uNeg]]
+          : [["sale", uSell], ["rent", uRent], ["demo", uDemo], ["neg", uNeg]];
         let best=null,bv=-1e18;
         for(const[k,v]of us){const vv=v+P.choiceNoise*(r()-0.5)*2;if(vv>bv){bv=vv;best=k;}}
         if(best==="sale")w.st[i]=S_SALE;
@@ -160,13 +165,15 @@ function step(w){
   }
 
   // 集計
-  let occ=0,vac=0,neg=0,tot=0;
-  for(let i=0;i<N;i++){if(zone[i]<0||w.st[i]===S_DEMO)continue;tot++;
+  let occ=0,vac=0,neg=0,demo=0,tot=0;
+  for(let i=0;i<N;i++){if(zone[i]<0)continue;tot++;
+    if(w.st[i]===S_DEMO){demo++;continue;}
     if(w.st[i]>=S_SALE&&w.st[i]<=S_NEG){vac++;if(w.st[i]===S_NEG)neg++;}else occ++;}
   const nv2=neighborVac(w);
   let s=0,c=0;for(let i=0;i<N;i++)if(zone[i]>=0&&w.st[i]>=S_SALE&&w.st[i]<=S_NEG){s+=nv2[i];c++;}
   const clu=(c&&vac/tot>0)?(s/c)/(vac/tot):0;
   w.hist.vac.push(vac/tot);w.hist.neg.push(neg/tot);w.hist.clu.push(clu);
+  w.hist.demo=(w.hist.demo||[]);w.hist.demo.push(demo/tot);
   w.year++;
 }
 

@@ -96,12 +96,14 @@ async function main() {
 
     // Auto-run on init (or wait for first completion)
     await page.waitForFunction(
-      () => document.getElementById("vac").textContent !== "–",
+      () => document.getElementById("vacPol").textContent !== "–",
       { timeout: TIMEOUT_MS },
     );
 
     const afterLoad = await page.evaluate(() => ({
-      vac: document.getElementById("vac").textContent,
+      vacBase: document.getElementById("vacBase").textContent,
+      vacPol: document.getElementById("vacPol").textContent,
+      demoPol: document.getElementById("demoPol").textContent,
       year: document.getElementById("year").value,
       btnRun: document.getElementById("btnRun").textContent,
     }));
@@ -126,16 +128,24 @@ async function main() {
 
     const at60 = await page.evaluate(() => ({
       yearLbl: document.getElementById("yearLbl").textContent,
-      vac: document.getElementById("vac").textContent,
-      neg: document.getElementById("neg").textContent,
+      vacBase: document.getElementById("vacBase").textContent,
+      vacPol: document.getElementById("vacPol").textContent,
+      demoPol: document.getElementById("demoPol").textContent,
+      diffN: document.getElementById("diffN").textContent,
       clu: document.getElementById("clu").textContent,
     }));
 
-    // Harness golden baseline vac ≈ 20.18%
-    const vacNum = parseFloat(at60.vac);
-    if (Number.isNaN(vacNum)) throw new Error(`Invalid vac at year 60: ${at60.vac}`);
-    if (vacNum < 25 || vacNum > 38) {
-      throw new Error(`vac at year 60 out of expected range: ${at60.vac}`);
+    const vacPol = parseFloat(at60.vacPol);
+    const demoPol = parseFloat(at60.demoPol);
+    if (Number.isNaN(vacPol)) throw new Error(`Invalid vacPol at year 60: ${at60.vacPol}`);
+    if (vacPol < 0 || vacPol > 20) {
+      throw new Error(`vacPol at year 60 out of expected range: ${at60.vacPol}`);
+    }
+    if (Number.isNaN(demoPol) || demoPol <= 0) {
+      throw new Error(`demoPol at year 60 should be >0 with tax=2 sub=150: ${at60.demoPol}`);
+    }
+    if (+at60.diffN <= 0) {
+      throw new Error("baseline and intervention maps should differ at year 60");
     }
 
     const report = {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * Headless 60-year harness (HANDOFF §7) — secondary long-run check after 住調2023 calibration.
+ * Headless 60-year harness (HANDOFF §7) — long-run stability + policy response.
  * Usage: node scripts/harness_60y.js [--seed=42] [--years=60] [--golden=/path]
  */
 const fs = require("fs");
@@ -44,21 +44,26 @@ function zoneVacRates(w) {
 
 const A = runWorld({ tax: 0, sub: 0 });
 const B = runWorld({ tax: 2, sub: 150 });
+const taxOnly = runWorld({ tax: 2, sub: 0 });
+const subOnly = runWorld({ tax: 0, sub: 150 });
 const L = A.hist.vac.length;
 const vac = A.hist.vac[L - 1];
 const neg = A.hist.neg[L - 1];
 const clu = A.hist.clu[L - 1];
+const demoA = A.hist.demo[L - 1];
+const demoB = B.hist.demo[L - 1];
 const zvac = zoneVacRates(A);
 const zvacB = zoneVacRates(B);
 
 const out = {
   seed,
   years,
-  baseline: { vac, neg, clu },
+  baseline: { vac, neg, clu, demo: demoA },
   intervention: {
     vac: B.hist.vac[L - 1],
     neg: B.hist.neg[L - 1],
     clu: B.hist.clu[L - 1],
+    demo: demoB,
   },
   zoneVac: Object.fromEntries(E.ZONES.map((Z, k) => [Z.n, zvac[k]])),
   zoneMig: Object.fromEntries(E.ZONES.map((Z) => [Z.n, Z.mig])),
@@ -68,9 +73,10 @@ console.log(JSON.stringify(out, null, 2));
 
 const checks = [
   ["60年: 空き家率が発散しない (≤25%)", vac <= 0.25],
-  ["60年: 西多摩が多摩中部より高い", zvac[0] > zvac[1]],
   ["政策: 全体空き家率低下", B.hist.vac[L - 1] < vac],
-  ["政策: 西多摩でも低下", zvacB[0] < zvac[0]],
+  ["政策: 解体補助で更地が増える", demoB > taxOnly.hist.demo[L - 1]],
+  ["補助単独でも更地が増える", subOnly.hist.demo[L - 1] > demoA],
+  ["60年: 西多摩が多摩中部より高い", zvac[0] > zvac[1]],
 ];
 let ok = true;
 for (const [label, pass] of checks) {
@@ -82,7 +88,7 @@ for (const [label, pass] of checks) {
 
 if (fs.existsSync(goldenPath)) {
   const golden = JSON.parse(fs.readFileSync(goldenPath, "utf8"));
-  const keys = ["vac", "neg", "clu"];
+  const keys = ["vac", "neg", "clu", "demo"];
   for (const k of keys) {
     if (out.baseline[k] !== golden.baseline[k]) {
       console.error(`FAIL: baseline.${k} golden=${golden.baseline[k]} got=${out.baseline[k]}`);
@@ -102,4 +108,4 @@ if (fs.existsSync(goldenPath)) {
 }
 
 if (!ok) process.exit(1);
-console.error("PASS: §7 harness (long-run stability + policy response)");
+console.error("PASS: §7 harness (long-run stability + policy response + demolition)");

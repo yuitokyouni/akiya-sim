@@ -16,7 +16,12 @@
   html,body{margin:0;height:100%;font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
     font-size:14px;color:var(--ink);background:#121820}
   /* filter は WebGL 地図を壊すので使わない — タイル側で暗くする */
-  #map-wrap{position:absolute;inset:0}
+  #map-wrap{position:absolute;inset:0;display:flex;flex-direction:column}
+  #map-labels{display:flex;z-index:2;pointer-events:none}
+  #map-labels span{flex:1;text-align:center;font-size:12px;font-weight:600;padding:8px 0;
+    background:linear-gradient(to bottom,rgba(18,24,32,.85),transparent)}
+  #map-labels .pol{color:#f0a080}
+  #map-inner{position:relative;flex:1;min-height:0}
   #map{width:100%;height:100%;background:#1a2332}
   #deck-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   #panel{position:absolute;top:12px;left:12px;width:280px;background:var(--panel);border:1px solid var(--line);
@@ -33,8 +38,11 @@
   button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
   button.active{background:var(--accent);border-color:var(--accent);color:#fff}
   button:disabled{opacity:.45;cursor:default}
-  .stats{font-size:12px;color:var(--ink2);margin-top:10px;line-height:1.7}
-  .stats b{color:var(--ink);font-family:ui-monospace,monospace}
+  .stats{font-size:11.5px;color:var(--ink2);margin-top:10px;line-height:1.65}
+  .stats .world{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+  .stats .world div{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:11px}
+  .stats .world b{color:var(--ink);font-family:ui-monospace,monospace;display:block;font-size:12px}
+  .stats .pol-lbl{color:#f0a080}
   .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ink2);margin-top:8px}
   .legend span{display:inline-flex;align-items:center;gap:4px}
   .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
@@ -48,25 +56,25 @@
 </style>
 </head>
 <body>
-<div id="map-wrap"><div id="map"></div><canvas id="deck-canvas"></canvas></div>
+<div id="map-wrap">
+  <div id="map-labels"><span>ベースライン（政策なし）</span><span class="pol">介入</span></div>
+  <div id="map-inner"><div id="map"></div><canvas id="deck-canvas"></canvas></div>
+</div>
 <div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
 <div id="js-err"></div>
 <aside id="panel">
   <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
   <p>84×26 格子を N03 行政区域でマスクし、東京都本土部へアフィン射影。1セル≠1建物。</p>
   <label class="row">シード <input id="seed" type="number" value="42"></label>
-  <label class="row">表示
-    <span>
-      <button type="button" id="btnBase" class="active">ベースライン</button>
-      <button type="button" id="btnPol" class="ghost">介入</button>
-    </span>
-  </label>
   <label class="row">年 <span class="num" id="yearLbl">0</span></label>
   <input type="range" id="year" min="0" max="60" step="1" value="0">
-  <label class="row">空き家課税（介入） <span class="num" id="vTax">0%</span></label>
-  <input type="range" id="tax" min="0" max="3" step="0.1" value="0">
-  <label class="row">解体補助（介入） <span class="num" id="vSub">0万</span></label>
-  <input type="range" id="sub" min="0" max="200" step="10" value="0">
+  <label class="row">空き家課税（介入） <span class="num" id="vTax">2.0%</span></label>
+  <input type="range" id="tax" min="0" max="3" step="0.1" value="2">
+  <label class="row">解体補助（介入） <span class="num" id="vSub">150万</span></label>
+  <input type="range" id="sub" min="0" max="200" step="10" value="150">
+  <div style="font-size:10.5px;color:var(--ink2);margin:-2px 0 6px;line-height:1.45">
+    補助は<strong>解体選択時のみ</strong>効きます（更地は現状再利用なし）。地図は左右にベースライン／介入を並列表示。
+  </div>
   <label class="row"><input type="checkbox" id="plateau"> PLATEAU建物（3D Tiles）</label>
   <div class="btns">
     <button type="button" id="btnRun">▶ 60年実行</button>
@@ -74,7 +82,17 @@
     <button type="button" id="btnReset" class="ghost">リセット</button>
   </div>
   <div class="stats">
-    空き家率 <b class="num" id="vac">–</b> · 放置 <b class="num" id="neg">–</b> · クラスタ <b class="num" id="clu">–</b>
+    <div class="world">
+      <div><span>ベースライン</span>
+        空き家 <b class="num" id="vacBase">–</b>
+        放置 <b class="num" id="negBase">–</b>
+        更地 <b class="num" id="demoBase">–</b></div>
+      <div><span class="pol-lbl">介入</span>
+        空き家 <b class="num" id="vacPol">–</b>
+        放置 <b class="num" id="negPol">–</b>
+        更地 <b class="num" id="demoPol">–</b></div>
+    </div>
+    クラスタ <b class="num" id="clu">–</b>（介入） · 差分セル <b class="num" id="diffN">–</b>
   </div>
   <div class="legend">
     <span><i class="sw" style="background:var(--c-occ)"></i>居住</span>
@@ -150,20 +168,34 @@ try {
     return { hist: w.hist, snaps };
   }
 
-  function columnData(st) {
+  const LON_SHIFT = 0.058;
+
+  function columnData(st, lonShift) {
     const nv = neighborVac({ st });
     return CELLS.map(({ i, position }) => {
       const s = st[i];
       const vacRate = nv[i];
       return {
-        position,
+        position: [position[0] + lonShift, position[1]],
         color: hexRgb(COLORS[s]),
         height: 40 + vacRate * 1400,
+        i,
       };
     });
   }
 
-  let view = "base";
+  function diffData(stA, stB, lonShift) {
+    const out = [];
+    for (const { i, position } of CELLS) {
+      if (stA[i] === stB[i]) continue;
+      out.push({
+        position: [position[0] + lonShift, position[1]],
+        i,
+      });
+    }
+    return out;
+  }
+
   let simBase = null;
   let simPol = null;
   let playTimer = null;
@@ -217,22 +249,47 @@ try {
   }
 
   function buildLayers() {
-    const sim = currentSim();
     const yr = +document.getElementById("year").value;
     const layers = [];
-    if (sim) {
+    if (simBase && simPol) {
+      const stA = simBase.snaps[yr];
+      const stB = simPol.snaps[yr];
       layers.push(new ColumnLayer({
-        id: "cells",
-        data: columnData(sim.snaps[yr]),
+        id: "cells-base",
+        data: columnData(stA, -LON_SHIFT),
         diskResolution: 8,
-        radius: 320,
+        radius: 280,
         extruded: true,
         pickable: false,
-        elevationScale: 1,
         getPosition: (d) => d.position,
         getFillColor: (d) => d.color,
         getElevation: (d) => d.height,
       }));
+      layers.push(new ColumnLayer({
+        id: "cells-pol",
+        data: columnData(stB, LON_SHIFT),
+        diskResolution: 8,
+        radius: 280,
+        extruded: true,
+        pickable: false,
+        getPosition: (d) => d.position,
+        getFillColor: (d) => d.color,
+        getElevation: (d) => d.height,
+      }));
+      const diff = diffData(stA, stB, LON_SHIFT);
+      if (diff.length) {
+        layers.push(new ColumnLayer({
+          id: "cells-diff",
+          data: diff,
+          diskResolution: 6,
+          radius: 340,
+          extruded: false,
+          pickable: false,
+          getPosition: (d) => d.position,
+          getFillColor: [240, 160, 80, 180],
+          getElevation: 1,
+        }));
+      }
     }
     if (plateauOn) {
       layers.push(new Tile3DLayer({
@@ -266,24 +323,18 @@ try {
     layers: [],
   });
 
-  function currentSim() {
-    return view === "base" ? simBase : simPol;
-  }
-
-  function renderLayers() {
-    syncDeck();
-  }
-
   function statsFromSt(st) {
-    let vac = 0, neg = 0, tot = 0;
+    let vac = 0, neg = 0, demo = 0, tot = 0;
     for (let i = 0; i < N; i++) {
-      if (zone[i] < 0 || st[i] === S_DEMO) continue;
+      if (zone[i] < 0) continue;
+      if (st[i] === S_DEMO) { demo++; continue; }
       tot++;
       if (st[i] >= S_SALE && st[i] <= S_NEG) {
         vac++;
         if (st[i] === S_NEG) neg++;
       }
     }
+    const denom = tot + demo;
     const nv2 = neighborVac({ st });
     let s = 0, c = 0;
     for (let i = 0; i < N; i++) {
@@ -294,23 +345,41 @@ try {
     }
     const vr = tot ? vac / tot : 0;
     const clu = c && vr > 0 ? s / c / vr : 0;
-    return { vac: vr, neg: tot ? neg / tot : 0, clu };
+    return { vac: vr, neg: tot ? neg / tot : 0, demo: denom ? demo / denom : 0, clu };
   }
 
   function refreshStats() {
-    const sim = currentSim();
     const yr = +document.getElementById("year").value;
     document.getElementById("yearLbl").textContent = String(yr);
-    if (!sim) return;
+    if (!simBase || !simPol) return;
     renderLayers();
-    const stats = yr === 0 ? statsFromSt(sim.snaps[yr]) : {
-      vac: sim.hist.vac[yr - 1],
-      neg: sim.hist.neg[yr - 1],
-      clu: sim.hist.clu[yr - 1],
+    const stA = simBase.snaps[yr];
+    const stB = simPol.snaps[yr];
+    const sA = yr === 0 ? statsFromSt(stA) : {
+      vac: simBase.hist.vac[yr - 1],
+      neg: simBase.hist.neg[yr - 1],
+      demo: simBase.hist.demo[yr - 1],
+      clu: simBase.hist.clu[yr - 1],
     };
-    document.getElementById("vac").textContent = pct(stats.vac);
-    document.getElementById("neg").textContent = pct(stats.neg);
-    document.getElementById("clu").textContent = stats.clu.toFixed(2);
+    const sB = yr === 0 ? statsFromSt(stB) : {
+      vac: simPol.hist.vac[yr - 1],
+      neg: simPol.hist.neg[yr - 1],
+      demo: simPol.hist.demo[yr - 1],
+      clu: simPol.hist.clu[yr - 1],
+    };
+    document.getElementById("vacBase").textContent = pct(sA.vac);
+    document.getElementById("negBase").textContent = pct(sA.neg);
+    document.getElementById("demoBase").textContent = pct(sA.demo);
+    document.getElementById("vacPol").textContent = pct(sB.vac);
+    document.getElementById("negPol").textContent = pct(sB.neg);
+    document.getElementById("demoPol").textContent = pct(sB.demo);
+    document.getElementById("clu").textContent = sB.clu.toFixed(2);
+    let diff = 0;
+    for (let i = 0; i < N; i++) {
+      if (zone[i] < 0) continue;
+      if (stA[i] !== stB[i]) diff++;
+    }
+    document.getElementById("diffN").textContent = String(diff);
   }
 
   function runSimulation() {
@@ -352,25 +421,19 @@ try {
   });
 
   // UI（シミュレーション）は地図タイル読込と独立 — init 成功時点で束縛・実行
+  function renderLayers() {
+    syncDeck();
+  }
+
   document.getElementById("year").oninput = refreshStats;
-  document.getElementById("btnBase").onclick = () => {
-    view = "base";
-    document.getElementById("btnBase").className = "active";
-    document.getElementById("btnPol").className = "ghost";
-    refreshStats();
-  };
-  document.getElementById("btnPol").onclick = () => {
-    view = "pol";
-    document.getElementById("btnBase").className = "ghost";
-    document.getElementById("btnPol").className = "active";
-    refreshStats();
-  };
   document.getElementById("tax").oninput = (e) => {
     document.getElementById("vTax").textContent = (+e.target.value).toFixed(1) + "%";
   };
   document.getElementById("sub").oninput = (e) => {
     document.getElementById("vSub").textContent = e.target.value + "万";
   };
+  document.getElementById("tax").onchange = () => { if (simBase) runSimulation(); };
+  document.getElementById("sub").onchange = () => { if (simBase) runSimulation(); };
   document.getElementById("btnRun").onclick = runSimulation;
   document.getElementById("btnReset").onclick = () => {
     if (playTimer) clearInterval(playTimer);
