@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>空き家ダイナミクス — 地図ビュー</title>
-<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <style>
   :root{
     --ink:#e8ecef; --ink2:#9aa8b2; --panel:rgba(22,28,36,.92);
@@ -15,7 +15,8 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
     font-size:14px;color:var(--ink);background:#121820}
-  #map-wrap{position:absolute;inset:0;filter:brightness(0.55) contrast(1.08) saturate(0.72)}
+  /* filter は WebGL 地図を壊すので使わない — タイル側で暗くする */
+  #map-wrap{position:absolute;inset:0}
   #map{width:100%;height:100%;background:#1a2332}
   #panel{position:absolute;top:12px;left:12px;width:280px;background:var(--panel);border:1px solid var(--line);
     border-radius:8px;padding:14px;z-index:2;backdrop-filter:blur(6px)}
@@ -30,6 +31,7 @@
     background:var(--ink);color:#121820;cursor:pointer}
   button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
   button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.45;cursor:default}
   .stats{font-size:12px;color:var(--ink2);margin-top:10px;line-height:1.7}
   .stats b{color:var(--ink);font-family:ui-monospace,monospace}
   .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ink2);margin-top:8px}
@@ -37,14 +39,17 @@
   .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
   #notice{position:absolute;bottom:12px;left:12px;right:12px;max-width:640px;font-size:11.5px;color:var(--ink2);
     background:rgba(18,24,32,.88);border:1px solid var(--line);border-radius:6px;padding:8px 12px;z-index:2}
-  #tile-warn{position:absolute;top:12px;right:12px;font-size:11px;color:#f0c080;background:rgba(18,24,32,.88);
-    border:1px solid #6a5030;border-radius:6px;padding:6px 10px;z-index:2;display:none}
+  #tile-warn,#js-err{position:absolute;top:12px;right:12px;max-width:420px;font-size:11px;
+    background:rgba(18,24,32,.92);border-radius:6px;padding:6px 10px;z-index:3;display:none}
+  #tile-warn{color:#f0c080;border:1px solid #6a5030}
+  #js-err{color:#ffb4b4;border:1px solid #6a3030;white-space:pre-wrap}
   .num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
 <div id="map-wrap"><div id="map"></div></div>
-<div id="tile-warn">背景タイル取得失敗 — カラム表示は継続（様式化グリッド）</div>
+<div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
+<div id="js-err"></div>
 <aside id="panel">
   <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
   <p>格子を東京都本土部へアフィン射影した統計的可視化。1セル≠1建物。</p>
@@ -83,263 +88,273 @@
 
 <script src="engine.js"></script>
 <script type="module">
-import maplibregl from "https://esm.sh/maplibre-gl@4.7.1";
-import {MapboxOverlay} from "https://esm.sh/@deck.gl/mapbox@9.0.35?deps=maplibre-gl@4.7.1";
-import {ColumnLayer} from "https://esm.sh/@deck.gl/layers@9.0.35";
-import {Tile3DLayer} from "https://esm.sh/@deck.gl/geo-layers@9.0.35";
-import {Tiles3DLoader} from "https://esm.sh/@loaders.gl/3d-tiles@4.2.5";
-
-const E = AkiyaEngine;
-const {
-  W, H, N, zone, COLORS, makeWorld, neighborVac, step,
-  S_SALE, S_NEG, S_DEMO,
-} = E;
-
-/* 格子 → 経緯度（本土部様式化シルエットのアフィン射影） */
-const AFFINE = { lon0: 138.95, lon1: 139.93, latN: 35.82, latS: 35.53 };
-function gridToLngLat(x, y) {
-  const lon = AFFINE.lon0 + (x / (W - 1)) * (AFFINE.lon1 - AFFINE.lon0);
-  const lat = AFFINE.latN - (y / (H - 1)) * (AFFINE.latN - AFFINE.latS);
-  return [lon, lat];
+function showErr(msg) {
+  const el = document.getElementById("js-err");
+  el.textContent = msg;
+  el.style.display = "block";
 }
 
-const CELLS = [];
-for (let y = 0; y < H; y++) {
-  for (let x = 0; x < W; x++) {
-    const i = y * W + x;
-    if (zone[i] < 0) continue;
-    CELLS.push({ i, position: gridToLngLat(x, y) });
+try {
+  if (typeof AkiyaEngine === "undefined") throw new Error("engine.js が読み込めません。map.html と同じフォルダに engine.js があるか確認してください。");
+
+  const maplibregl = (await import("https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm")).default;
+  const { MapboxOverlay } = await import("https://cdn.jsdelivr.net/npm/@deck.gl/mapbox@9.0.35/+esm");
+  const { ColumnLayer } = await import("https://cdn.jsdelivr.net/npm/@deck.gl/layers@9.0.35/+esm");
+  const { Tile3DLayer } = await import("https://cdn.jsdelivr.net/npm/@deck.gl/geo-layers@9.0.35/+esm");
+  const { Tiles3DLoader } = await import("https://cdn.jsdelivr.net/npm/@loaders.gl/3d-tiles@4.2.5/+esm");
+
+  const E = AkiyaEngine;
+  const {
+    W, H, N, zone, COLORS, makeWorld, neighborVac, step,
+    S_SALE, S_NEG, S_DEMO,
+  } = E;
+
+  const AFFINE = { lon0: 138.95, lon1: 139.93, latN: 35.82, latS: 35.53 };
+  function gridToLngLat(x, y) {
+    const lon = AFFINE.lon0 + (x / (W - 1)) * (AFFINE.lon1 - AFFINE.lon0);
+    const lat = AFFINE.latN - (y / (H - 1)) * (AFFINE.latN - AFFINE.latS);
+    return [lon, lat];
   }
-}
 
-const PLATEAU_URL =
-  "https://api.plateauview.mlit.go.jp/datacatalog/3dtiles/13-bldg-lod1-latest/tileset.json";
-
-function hexRgb(hex) {
-  const n = parseInt(hex.slice(1), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-function pct(v) { return (v * 100).toFixed(1) + "%"; }
-
-function simulate(seed, policy, years) {
-  const w = makeWorld(seed, policy);
-  const snaps = [new Uint8Array(w.st)];
-  for (let t = 0; t < years; t++) {
-    step(w);
-    snaps.push(new Uint8Array(w.st));
+  const CELLS = [];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (zone[i] < 0) continue;
+      CELLS.push({ i, position: gridToLngLat(x, y) });
+    }
   }
-  return { hist: w.hist, snaps };
-}
 
-function columnData(st) {
-  const w = { st };
-  const nv = neighborVac(w);
-  return CELLS.map(({ i, position }) => {
-    const s = st[i];
-    const vacRate = nv[i];
-    return {
-      position,
-      state: s,
-      vacRate,
-      color: hexRgb(COLORS[s]),
-      height: 40 + vacRate * 1400,
-    };
-  });
-}
+  const PLATEAU_URL =
+    "https://api.plateauview.mlit.go.jp/datacatalog/3dtiles/13-bldg-lod1-latest/tileset.json";
 
-let view = "base";
-let simBase = null;
-let simPol = null;
-let playTimer = null;
-let plateauOn = false;
-let tileOk = true;
+  function hexRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 220];
+  }
 
-const map = new maplibregl.Map({
-  container: "map",
-  style: {
-    version: 8,
-    sources: {
-      gsi: {
-        type: "raster",
-        tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        maxzoom: 18,
-        attribution: "地理院タイル",
+  function pct(v) { return (v * 100).toFixed(1) + "%"; }
+
+  function simulate(seed, policy, years) {
+    const w = makeWorld(seed, policy);
+    const snaps = [new Uint8Array(w.st)];
+    for (let t = 0; t < years; t++) {
+      step(w);
+      snaps.push(new Uint8Array(w.st));
+    }
+    return { hist: w.hist, snaps };
+  }
+
+  function columnData(st) {
+    const nv = neighborVac({ st });
+    return CELLS.map(({ i, position }) => {
+      const s = st[i];
+      const vacRate = nv[i];
+      return {
+        position,
+        color: hexRgb(COLORS[s]),
+        height: 40 + vacRate * 1400,
+      };
+    });
+  }
+
+  let view = "base";
+  let simBase = null;
+  let simPol = null;
+  let playTimer = null;
+  let plateauOn = false;
+  let overlay = null;
+
+  const map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        gsi: {
+          type: "raster",
+          tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          maxzoom: 18,
+          attribution: "地理院タイル",
+        },
       },
+      layers: [{
+        id: "gsi",
+        type: "raster",
+        source: "gsi",
+        paint: {
+          "raster-brightness-min": 0.08,
+          "raster-brightness-max": 0.45,
+          "raster-saturation": -0.35,
+        },
+      }],
     },
-    layers: [{ id: "gsi", type: "raster", source: "gsi" }],
-  },
-  center: [139.72, 35.66],
-  zoom: 9.2,
-  pitch: 50,
-  bearing: -15,
-  antialias: true,
-});
+    center: [139.72, 35.66],
+    zoom: 9.2,
+    pitch: 50,
+    bearing: -15,
+    antialias: true,
+  });
 
-map.on("error", (e) => {
-  if (e?.error?.message?.includes("Failed to fetch") || e?.error?.status === 404) {
-    tileOk = false;
+  map.on("error", () => {
     document.getElementById("tile-warn").style.display = "block";
+  });
+
+  overlay = new MapboxOverlay({ interleaved: true, layers: [] });
+
+  function currentSim() {
+    return view === "base" ? simBase : simPol;
   }
-});
 
-const overlay = new MapboxOverlay({ interleaved: true, layers: [] });
-map.addControl(overlay);
-
-function currentSim() {
-  return view === "base" ? simBase : simPol;
-}
-
-function renderLayers() {
-  const sim = currentSim();
-  const yr = +document.getElementById("year").value;
-  const layers = [];
-  if (sim) {
-    const st = sim.snaps[yr];
-    layers.push(
-      new ColumnLayer({
+  function renderLayers() {
+    if (!overlay) return;
+    const sim = currentSim();
+    const yr = +document.getElementById("year").value;
+    const layers = [];
+    if (sim) {
+      layers.push(new ColumnLayer({
         id: "cells",
-        data: columnData(st),
-        diskResolution: 6,
-        radius: 280,
+        data: columnData(sim.snaps[yr]),
+        diskResolution: 8,
+        radius: 320,
         extruded: true,
         pickable: false,
         elevationScale: 1,
         getPosition: (d) => d.position,
         getFillColor: (d) => d.color,
         getElevation: (d) => d.height,
-        opacity: 0.92,
-      })
-    );
-  }
-  if (plateauOn) {
-    layers.push(
-      new Tile3DLayer({
+      }));
+    }
+    if (plateauOn) {
+      layers.push(new Tile3DLayer({
         id: "plateau-bldg",
         data: PLATEAU_URL,
         loader: Tiles3DLoader,
         opacity: 0.35,
         onTileError: () => {},
-      })
-    );
-  }
-  overlay.setProps({ layers });
-}
-
-function statsFromSt(st) {
-  let vac = 0, neg = 0, tot = 0;
-  for (let i = 0; i < N; i++) {
-    if (zone[i] < 0 || st[i] === S_DEMO) continue;
-    tot++;
-    if (st[i] >= S_SALE && st[i] <= S_NEG) {
-      vac++;
-      if (st[i] === S_NEG) neg++;
+      }));
     }
+    overlay.setProps({ layers });
   }
-  const nv2 = neighborVac({ st });
-  let s = 0, c = 0;
-  for (let i = 0; i < N; i++) {
-    if (zone[i] >= 0 && st[i] >= S_SALE && st[i] <= S_NEG) {
-      s += nv2[i];
-      c++;
-    }
-  }
-  const vr = tot ? vac / tot : 0;
-  const clu = c && vr > 0 ? s / c / vr : 0;
-  return { vac: vr, neg: tot ? neg / tot : 0, clu };
-}
 
-function refreshStats() {
-  const sim = currentSim();
-  const yr = +document.getElementById("year").value;
-  document.getElementById("yearLbl").textContent = String(yr);
-  if (!sim) return;
-  const st = sim.snaps[yr];
-  renderLayers();
-  const stats =
-    yr === 0 ? statsFromSt(st) : {
+  function statsFromSt(st) {
+    let vac = 0, neg = 0, tot = 0;
+    for (let i = 0; i < N; i++) {
+      if (zone[i] < 0 || st[i] === S_DEMO) continue;
+      tot++;
+      if (st[i] >= S_SALE && st[i] <= S_NEG) {
+        vac++;
+        if (st[i] === S_NEG) neg++;
+      }
+    }
+    const nv2 = neighborVac({ st });
+    let s = 0, c = 0;
+    for (let i = 0; i < N; i++) {
+      if (zone[i] >= 0 && st[i] >= S_SALE && st[i] <= S_NEG) {
+        s += nv2[i];
+        c++;
+      }
+    }
+    const vr = tot ? vac / tot : 0;
+    const clu = c && vr > 0 ? s / c / vr : 0;
+    return { vac: vr, neg: tot ? neg / tot : 0, clu };
+  }
+
+  function refreshStats() {
+    const sim = currentSim();
+    const yr = +document.getElementById("year").value;
+    document.getElementById("yearLbl").textContent = String(yr);
+    if (!sim) return;
+    renderLayers();
+    const stats = yr === 0 ? statsFromSt(sim.snaps[yr]) : {
       vac: sim.hist.vac[yr - 1],
       neg: sim.hist.neg[yr - 1],
       clu: sim.hist.clu[yr - 1],
     };
-  document.getElementById("vac").textContent = pct(stats.vac);
-  document.getElementById("neg").textContent = pct(stats.neg);
-  document.getElementById("clu").textContent = stats.clu.toFixed(2);
-}
-
-function runSimulation() {
-  const seed = +document.getElementById("seed").value || 42;
-  const tax = +document.getElementById("tax").value;
-  const sub = +document.getElementById("sub").value;
-  simBase = simulate(seed, { tax: 0, sub: 0 }, 60);
-  simPol = simulate(seed, { tax, sub }, 60);
-  document.getElementById("year").value = "0";
-  refreshStats();
-}
-
-map.on("load", () => {
-  runSimulation();
-  map.on("move", () => overlay.setProps({ layers: overlay.props.layers }));
-});
-
-document.getElementById("year").oninput = refreshStats;
-
-document.getElementById("btnBase").onclick = () => {
-  view = "base";
-  document.getElementById("btnBase").className = "active";
-  document.getElementById("btnPol").className = "ghost";
-  refreshStats();
-};
-document.getElementById("btnPol").onclick = () => {
-  view = "pol";
-  document.getElementById("btnBase").className = "ghost";
-  document.getElementById("btnPol").className = "active";
-  refreshStats();
-};
-
-document.getElementById("tax").oninput = (e) => {
-  document.getElementById("vTax").textContent = (+e.target.value).toFixed(1) + "%";
-};
-document.getElementById("sub").oninput = (e) => {
-  document.getElementById("vSub").textContent = e.target.value + "万";
-};
-
-document.getElementById("btnRun").onclick = runSimulation;
-document.getElementById("btnReset").onclick = () => {
-  if (playTimer) clearInterval(playTimer);
-  playTimer = null;
-  document.getElementById("year").value = "0";
-  runSimulation();
-};
-
-document.getElementById("btnPlay").onclick = (e) => {
-  if (playTimer) {
-    clearInterval(playTimer);
-    playTimer = null;
-    e.target.textContent = "アニメ";
-    return;
+    document.getElementById("vac").textContent = pct(stats.vac);
+    document.getElementById("neg").textContent = pct(stats.neg);
+    document.getElementById("clu").textContent = stats.clu.toFixed(2);
   }
-  if (!simBase) runSimulation();
-  let yr = +document.getElementById("year").value;
-  e.target.textContent = "停止";
-  playTimer = setInterval(() => {
-    yr++;
-    if (yr > 60) {
+
+  function runSimulation() {
+    const seed = +document.getElementById("seed").value || 42;
+    const tax = +document.getElementById("tax").value;
+    const sub = +document.getElementById("sub").value;
+    document.getElementById("btnRun").disabled = true;
+    document.getElementById("btnRun").textContent = "計算中…";
+    setTimeout(() => {
+      simBase = simulate(seed, { tax: 0, sub: 0 }, 60);
+      simPol = simulate(seed, { tax, sub }, 60);
+      document.getElementById("year").value = "0";
+      document.getElementById("btnRun").disabled = false;
+      document.getElementById("btnRun").textContent = "▶ 60年実行";
+      refreshStats();
+    }, 0);
+  }
+
+  map.on("load", () => {
+    map.addControl(overlay);
+    runSimulation();
+  });
+
+  document.getElementById("year").oninput = refreshStats;
+  document.getElementById("btnBase").onclick = () => {
+    view = "base";
+    document.getElementById("btnBase").className = "active";
+    document.getElementById("btnPol").className = "ghost";
+    refreshStats();
+  };
+  document.getElementById("btnPol").onclick = () => {
+    view = "pol";
+    document.getElementById("btnBase").className = "ghost";
+    document.getElementById("btnPol").className = "active";
+    refreshStats();
+  };
+  document.getElementById("tax").oninput = (e) => {
+    document.getElementById("vTax").textContent = (+e.target.value).toFixed(1) + "%";
+  };
+  document.getElementById("sub").oninput = (e) => {
+    document.getElementById("vSub").textContent = e.target.value + "万";
+  };
+  document.getElementById("btnRun").onclick = runSimulation;
+  document.getElementById("btnReset").onclick = () => {
+    if (playTimer) clearInterval(playTimer);
+    playTimer = null;
+    document.getElementById("btnPlay").textContent = "アニメ";
+    document.getElementById("year").value = "0";
+    runSimulation();
+  };
+  document.getElementById("btnPlay").onclick = (e) => {
+    if (playTimer) {
       clearInterval(playTimer);
       playTimer = null;
       e.target.textContent = "アニメ";
       return;
     }
-    document.getElementById("year").value = String(yr);
-    refreshStats();
-  }, 200);
-};
+    if (!simBase) runSimulation();
+    let yr = +document.getElementById("year").value;
+    e.target.textContent = "停止";
+    playTimer = setInterval(() => {
+      yr++;
+      if (yr > 60) {
+        clearInterval(playTimer);
+        playTimer = null;
+        e.target.textContent = "アニメ";
+        return;
+      }
+      document.getElementById("year").value = String(yr);
+      refreshStats();
+    }, 200);
+  };
+  document.getElementById("plateau").onchange = (e) => {
+    plateauOn = e.target.checked;
+    renderLayers();
+  };
 
-document.getElementById("plateau").onchange = (e) => {
-  plateauOn = e.target.checked;
-  renderLayers();
-};
+} catch (err) {
+  console.error(err);
+  showErr("初期化エラー: " + (err?.message || err) + "\n\nネットワークで CDN (jsdelivr) がブロックされていないか、DevTools Console を確認してください。");
+}
 </script>
 </body>
 </html>
