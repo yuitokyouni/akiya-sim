@@ -300,6 +300,37 @@ function simulateFull(seed, years, policy) {
 let baseCache = null;
 let intResult = null;
 let charts = [];
+let debounceTimer = null;
+
+/** ベースライン metrics の数値列から Y 軸範囲を決定（介入でスケールが変わらないよう固定） */
+function yBoundsFromBaseline(values) {
+  const vals = values.filter((v) => v != null);
+  if (!vals.length) return { yMin: 0, yMax: 1 };
+  let yMin = Math.min(...vals);
+  let yMax = Math.max(...vals);
+  const pad = (yMax - yMin) * 0.08 || 0.5;
+  return { yMin: Math.max(0, yMin - pad), yMax: yMax + pad };
+}
+
+function ensureBaseline(seed, years) {
+  const cacheKey = `${seed}:${years}`;
+  if (baseCache && baseCache.cacheKey === cacheKey) return;
+
+  const sim = simulateFull(seed, years, { tax: 0, sub: 0 });
+  const metrics = sim.metrics.map((m) => ({ ...m }));
+  const vacA = sim.hist.vac.map((v) => v * 100);
+  const demoA = sim.hist.demo.map((v) => v * 100);
+  const yMaxMacro = Math.max(18, ...vacA, ...demoA) * 1.15;
+
+  baseCache = {
+    cacheKey,
+    snaps: sim.snaps,
+    trans: sim.trans,
+    hist: sim.hist,
+    metrics,
+    yMaxMacro,
+  };
+}
 const mapCanvas = document.getElementById("mapCanvas");
 const mapCtx = mapCanvas.getContext("2d");
 
@@ -408,19 +439,19 @@ function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
   destroyCharts();
 
   const macroDefs = [
-    { id: "vacRate", title: "空き家率", sub: "売出+募集+放置 / 有効セル", key: "vacRate", unit: "%", yMax: yMaxMacro },
-    { id: "negRate", title: "放置率", sub: "放置 / 有効セル", key: "negRate", unit: "%", yMax: yMaxMacro * 0.6 },
-    { id: "demoRate", title: "更地率", sub: "更地 / 全セル", key: "demoRate", unit: "%", yMax: yMaxMacro },
+    { id: "vacRate", title: "空き家率", sub: "売出+募集+放置 / 有効セル（縦軸はベースライン固定）", key: "vacRate", unit: "%", yMax: yMaxMacro },
+    { id: "negRate", title: "放置率", sub: "放置 / 有効セル（縦軸はベースライン固定）", key: "negRate", unit: "%", yMax: yMaxMacro * 0.6 },
+    { id: "demoRate", title: "更地率", sub: "更地 / 全セル（縦軸はベースライン固定）", key: "demoRate", unit: "%", yMax: yMaxMacro },
     { id: "stocks", title: "状態別ストック（介入）", sub: "件数", stocks: true },
     { id: "trans", title: "年次遷移（介入）", sub: "その年に発生した遷移件数", trans: true },
   ];
 
   const ownerDefs = [
-    { id: "ownerAge", title: "空き家・平均所有者年齢", sub: "oAge 平均", key: "vacOwnerAge", unit: "歳" },
-    { id: "ownerRemote", title: "空き家・遠隔所有者率", sub: "oRemote=1 の割合", key: "vacOwnerRemoteFrac", unit: "%", scale100: true },
-    { id: "ownerCo", title: "空き家・平均共有名義数", sub: "oCo 平均（1=単独）", key: "vacOwnerCoMean", unit: "名" },
-    { id: "ownerAttach", title: "空き家・平均愛着", sub: "attach 平均", key: "vacOwnerAttach", unit: "" },
-    { id: "ownerNegY", title: "空き家・平均放置年数", sub: "negYears 平均", key: "vacNegYears", unit: "年" },
+    { id: "ownerAge", title: "空き家・平均所有者年齢", sub: "oAge 平均（縦軸はベースライン固定）", key: "vacOwnerAge", unit: "歳" },
+    { id: "ownerRemote", title: "空き家・遠隔所有者率", sub: "oRemote=1 の割合（縦軸はベースライン固定）", key: "vacOwnerRemoteFrac", unit: "%", scale100: true },
+    { id: "ownerCo", title: "空き家・平均共有名義数", sub: "oCo 平均（縦軸はベースライン固定）", key: "vacOwnerCoMean", unit: "名" },
+    { id: "ownerAttach", title: "空き家・平均愛着", sub: "attach 平均（縦軸はベースライン固定）", key: "vacOwnerAttach", unit: "" },
+    { id: "ownerNegY", title: "空き家・平均放置年数", sub: "negYears 平均（縦軸はベースライン固定）", key: "vacNegYears", unit: "年" },
   ];
 
   function dualLineDataset(label, data, color, dashed) {
@@ -536,12 +567,7 @@ function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
     };
     const bData = baseM.map(mapVal);
     const iData = intM.map(mapVal);
-    const all = bData.concat(iData).filter((v) => v != null);
-    let yMin = all.length ? Math.min(...all) : 0;
-    let yMax = all.length ? Math.max(...all) : 1;
-    const pad = (yMax - yMin) * 0.08 || 0.5;
-    yMin = Math.max(0, yMin - pad);
-    yMax = yMax + pad;
+    const { yMin, yMax } = yBoundsFromBaseline(bData);
     makeChart(canvas, {
       type: "line",
       data: {
@@ -554,6 +580,41 @@ function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
       options: chartOptions(def.unit, yMin, yMax),
     });
   });
+}
+
+function refreshChartsAndMap(years) {
+  const labels = intResult.metrics.map((_, t) => String(t));
+  buildCharts(baseCache.metrics, intResult.metrics, intResult.trans, labels, baseCache.yMaxMacro);
+
+  const t0 = Math.min(parseInt(document.getElementById("yearSlider").value, 10), years);
+  document.getElementById("yearLbl").textContent = String(t0);
+  drawMap();
+
+  const m = intResult.metrics[years];
+  document.getElementById("runStat").innerHTML =
+    `完了: <b>${years}年</b> · 介入 空き家率 <b>${m.vacRate.toFixed(1)}%</b> · ` +
+    `所有者年齢(空き家) <b>${m.vacOwnerAge != null ? m.vacOwnerAge.toFixed(1) : "—"}</b> · ` +
+    `遠隔 <b>${m.vacOwnerRemoteFrac != null ? (100 * m.vacOwnerRemoteFrac).toFixed(0) : "—"}%</b>`;
+}
+
+/** 政策スライダー変更時: ベースラインは触らず介入のみ再計算 */
+function runInterventionOnly() {
+  const seed = parseInt(document.getElementById("seed").value, 10) || 42;
+  const years = parseInt(document.getElementById("years").value, 10) || 30;
+  const policy = policyFromUI();
+
+  document.getElementById("yearSlider").max = years;
+  document.getElementById("taxVal").textContent = policy.tax.toFixed(1) + "%";
+  document.getElementById("subVal").textContent = String(Math.round(policy.sub));
+
+  ensureBaseline(seed, years);
+  intResult = simulateFull(seed, years, policy);
+  refreshChartsAndMap(years);
+}
+
+function scheduleInterventionUpdate() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runInterventionOnly, 120);
 }
 
 async function runSimulation() {
@@ -574,28 +635,9 @@ async function runSimulation() {
 
   await new Promise((r) => setTimeout(r, 0));
 
-  const cacheKey = `${seed}:${years}`;
-  if (!baseCache || baseCache.cacheKey !== cacheKey) {
-    baseCache = { cacheKey, ...simulateFull(seed, years, { tax: 0, sub: 0 }) };
-  }
+  ensureBaseline(seed, years);
   intResult = simulateFull(seed, years, policy);
-
-  const labels = intResult.metrics.map((_, t) => String(t));
-  const vacA = baseCache.hist.vac.map((v) => v * 100);
-  const demoA = baseCache.hist.demo.map((v) => v * 100);
-  const yMaxMacro = Math.max(18, ...vacA, ...demoA) * 1.15;
-
-  buildCharts(baseCache.metrics, intResult.metrics, intResult.trans, labels, yMaxMacro);
-
-  const t0 = Math.min(parseInt(document.getElementById("yearSlider").value, 10), years);
-  document.getElementById("yearLbl").textContent = String(t0);
-  drawMap();
-
-  const m = intResult.metrics[years];
-  stat.innerHTML =
-    `完了: <b>${years}年</b> · 介入 空き家率 <b>${m.vacRate.toFixed(1)}%</b> · ` +
-    `所有者年齢(空き家) <b>${m.vacOwnerAge != null ? m.vacOwnerAge.toFixed(1) : "—"}</b> · ` +
-    `遠隔 <b>${m.vacOwnerRemoteFrac != null ? (100 * m.vacOwnerRemoteFrac).toFixed(0) : "—"}%</b>`;
+  refreshChartsAndMap(years);
 
   btn.disabled = false;
   wrap.classList.remove("busy");
@@ -604,10 +646,14 @@ async function runSimulation() {
 document.getElementById("tax").addEventListener("input", () => {
   document.getElementById("taxVal").textContent =
     parseFloat(document.getElementById("tax").value).toFixed(1) + "%";
+  scheduleInterventionUpdate();
 });
 document.getElementById("sub").addEventListener("input", () => {
   document.getElementById("subVal").textContent = document.getElementById("sub").value;
+  scheduleInterventionUpdate();
 });
+document.getElementById("seed").addEventListener("change", runSimulation);
+document.getElementById("years").addEventListener("change", runSimulation);
 document.getElementById("runBtn").addEventListener("click", runSimulation);
 document.getElementById("yearSlider").addEventListener("input", () => {
   document.getElementById("yearLbl").textContent = document.getElementById("yearSlider").value;
