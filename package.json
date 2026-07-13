@@ -2,6 +2,7 @@
   "name": "akiya-sim",
   "private": true,
   "scripts": {
+    "test": "node scripts/harness_10y.js && node scripts/harness_audit.js && node scripts/harness_60y.js",
     "harness": "node scripts/harness_60y.js",
     "harness:10y": "node scripts/harness_10y.js",
     "harness:60y": "node scripts/harness_60y.js",
