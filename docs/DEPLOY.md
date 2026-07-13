@@ -7,7 +7,7 @@
 1. リポジトリ **Settings → Pages**
 2. **Source**: GitHub Actions
 3. `main` にマージ後、ワークフlow `.github/workflows/pages.yml` が自動実行
-4. 数分後 `https://<user>.github.io/akiya-sim/` で `index.html` が開く
+4. 数分後 **https://yuitokyouni.github.io/akiya-sim/** で `index.html` が開く
 
 ## ローカル確認
 
