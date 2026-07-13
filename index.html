@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>空き家政策シミュレータ — 都知事杯2026</title>
+  <style>
+    :root { --bg:#0b0f14; --panel:#121a24; --text:#e8eef6; --muted:#9fb0c3; --accent:#5eead4; --border:#243244; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 48px; }
+    h1 { margin: 0 0 8px; font-size: 1.5rem; }
+    p.lead { color: var(--muted); margin: 0 0 24px; }
+    .grid { display: grid; gap: 12px; }
+    a.card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      transition: border-color .15s;
+    }
+    a.card:hover { border-color: var(--accent); }
+    a.card h2 { margin: 0 0 6px; font-size: 1.05rem; color: var(--accent); }
+    a.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+    footer { margin-top: 28px; font-size: 0.8rem; color: var(--muted); }
+    code { font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>空き家政策シミュレータ</h1>
+    <p class="lead">
+      東京都域の様式化 ABM。同一シードでベースラインと介入（空き家課税・解体補助）を比較します。
+      住調2023 で初期化、ハーネス検証済み。
+    </p>
+    <div class="grid">
+      <a class="card" href="map.html">
+        <h2>地図ビュー</h2>
+        <p>MapLibre + deck.gl。左右並列の 3D カラムマップ。メインデモ向け。</p>
+      </a>
+      <a class="card" href="dynamics.html">
+        <h2>マクロ動態・所有者属性</h2>
+        <p>時系列グラフ、空き家所有者のミクロ属性、格子ホバー。</p>
+      </a>
+      <a class="card" href="mechanism.html">
+        <h2>政策メカニズム</h2>
+        <p>課税・補助が効用のどの項に入るか。ブラウザ内監査。</p>
+      </a>
+      <a class="card" href="akiya_abm_tokyo.html">
+        <h2>格子シミュレータ（軽量）</h2>
+        <p>依存最小の 2 画面比較 + 年次チャート。</p>
+      </a>
+    </div>
+    <footer>
+      公開 URL: <a href="https://yuitokyouni.github.io/akiya-sim/" style="color:var(--accent)">yuitokyouni.github.io/akiya-sim</a> ·
+      ローカル: <code>python3 -m http.server 8765</code> ·
+      検証: <code>npm test</code>
+    </footer>
+  </div>
+</body>
+</html>

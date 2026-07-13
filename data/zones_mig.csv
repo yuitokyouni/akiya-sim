@@ -1,0 +1,7 @@
+zone,mig,net_migration,pop_start,pop_end,municipality_count,source_url,source_csv,fiscal_year,acquired_date
+西多摩,0.003368,1255,373244,371930,8,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10
+多摩中部,0.004930,14080,2854647,2856823,16,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10
+多摩東部,0.003882,4131,1062640,1065403,6,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10
+区部西,0.005499,26685,4833475,4871728,10,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10
+都心,0.004810,5388,1110684,1129466,5,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10
+城東,0.006160,23794,3847134,3877627,8,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24q10000.htm,https://www.toukei.metro.tokyo.lg.jp/jugoki/2024/ju24qv0100.csv,令和6年,2026-07-10

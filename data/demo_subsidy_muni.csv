@@ -1,0 +1,54 @@
+municipality,zone,sub_max_man,tokyo_metro_add_man,effective_max_man,source_url,note,acquired
+あきる野市,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+奥多摩町,西多摩,50,10,60,https://www.town.okutama.tokyo.jp/,要確認,2026-07-13
+日の出町,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+檜原村,西多摩,100,10,110,https://www.hinohara-tokyo.org/,老朽空き家除却補助,2026-07-13
+瑞穂町,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+福生市,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+羽村市,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+青梅市,西多摩,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+八王子市,多摩中部,100,10,110,https://www.city.hachioji.tokyo.jp/,未利用空き家除却,2026-07-13
+国分寺市,多摩中部,70,10,80,https://www.city.kokubunji.tokyo.jp/,耐震診断・改修助成（除却）,2026-07-13
+国立市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+多摩市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+小平市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+日野市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+昭島市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+東久留米市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+東大和市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+東村山市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+武蔵村山市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+清瀬市,多摩中部,100,10,110,https://www.city.kiyose.lg.jp/,木造住宅耐震改修（除却）,2026-07-13
+町田市,多摩中部,50,10,60,https://www.city.machida.tokyo.jp/,要確認,2026-07-13
+稲城市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+立川市,多摩中部,50,10,60,https://www.city.tachikawa.lg.jp/,要確認,2026-07-13
+西東京市,多摩中部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+三鷹市,多摩東部,50,10,60,https://www.city.mitaka.lg.jp/,要確認,2026-07-13
+小金井市,多摩東部,50,10,60,https://www.city.koganei.lg.jp/,要確認,2026-07-13
+府中市,多摩東部,50,10,60,https://www.city.fuchu.tokyo.jp/,要確認,2026-07-13
+武蔵野市,多摩東部,50,10,60,https://www.city.musashino.lg.jp/,要確認,2026-07-13
+狛江市,多摩東部,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,独自制度未確認 — デフォルト50万で代用,2026-07-13
+調布市,多摩東部,80,10,90,https://www.city.chofu.tokyo.jp/,耐震改修助成（解体含む）,2026-07-13
+世田谷区,区部西,50,10,60,https://www.city.setagaya.lg.jp/,要確認,2026-07-13
+中野区,区部西,200,10,210,https://www.city.tokyo-nakano.lg.jp/,老朽建築物除却（不燃化特区）,2026-07-13
+北区,区部西,50,10,60,https://www.city.kita.tokyo.jp/,要確認,2026-07-13
+品川区,区部西,100,10,110,https://www.city.shinagawa.tokyo.jp/,要確認,2026-07-13
+杉並区,区部西,150,10,160,https://www.city.suginami.tokyo.jp/,老朽危険空家除却,2026-07-13
+板橋区,区部西,50,10,60,https://www.city.itabashi.tokyo.jp/,老朽建築物等解体費助成,2026-07-13
+渋谷区,区部西,240,10,250,https://www.city.shibuya.tokyo.jp/,不燃化特区区域内除却,2026-07-13
+目黒区,区部西,50,10,60,https://www.city.meguro.tokyo.jp/,要確認,2026-07-13
+練馬区,区部西,200,10,210,https://www.city.nerima.tokyo.jp/,老朽建築物の除却費用助成,2026-07-13
+豊島区,区部西,50,10,60,https://www.city.toshima.lg.jp/,要確認,2026-07-13
+中央区,都心,100,10,110,https://www.city.chuo.lg.jp/,老朽建築物除却助成,2026-07-13
+千代田区,都心,50,10,60,https://www.juutakuseisaku.metro.tokyo.lg.jp/akiya/hojo/,要個別確認,2026-07-13
+文京区,都心,50,10,60,https://www.city.bunkyo.lg.jp/,要確認,2026-07-13
+新宿区,都心,50,10,60,https://www.city.shinjuku.lg.jp/,要確認,2026-07-13
+港区,都心,100,10,110,https://www.city.minato.tokyo.jp/,民間建築物耐震化促進（除却）,2026-07-13
+台東区,城東,100,10,110,https://www.city.taito.lg.jp/,老朽建築物等解体費助成,2026-07-13
+墨田区,城東,200,10,210,https://www.city.sumida.lg.jp/,老朽建築物除却等助成,2026-07-13
+大田区,城東,75,10,85,https://www.city.ota.tokyo.jp/,木造住宅除去工事助成,2026-07-13
+江戸川区,城東,100,10,110,https://www.city.edogawa.tokyo.jp/,老朽住宅除却工事費助成,2026-07-13
+江東区,城東,100,10,110,https://www.city.koto.lg.jp/,老朽建築物等除却費用助成,2026-07-13
+荒川区,城東,50,10,60,https://www.city.arakawa.tokyo.jp/,要確認,2026-07-13
+葛飾区,城東,100,10,110,https://www.city.katsushika.lg.jp/,老朽家屋等解体工事費助成,2026-07-13
+足立区,城東,100,10,110,https://www.city.adachi.tokyo.jp/,老朽家屋等解体工事費助成,2026-07-13

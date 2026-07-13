@@ -1,0 +1,7 @@
+zone,vac_rate,total_dwellings,vacant_dwellings,municipality_count,source_survey,source_table,source_url,acquired_date,notes
+西多摩,0.110703,179850,19910,6,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,"imputed muni: 檜原村,奥多摩町"
+多摩中部,0.106614,1485260,158350,16,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,
+多摩東部,0.110769,594660,65870,6,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,
+区部西,0.109478,2963790,324470,10,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,
+都心,0.117001,737000,86230,5,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,
+城東,0.106264,2221270,236040,8,令和5年住宅・土地統計調査（2023年10月1日現在）,第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）,https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842,2026-07-12,
