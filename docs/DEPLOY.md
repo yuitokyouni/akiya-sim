@@ -1,13 +1,20 @@
 # 公開デプロイ（localhost 脱却）
 
-静的 HTML のみなので **GitHub Pages** が最も手軽です。ビルド不要（`data/*.gen.js` はリポジトリにコミット済み）。
+静的 HTML のみ。**GitHub Pages** で公開します。
 
-## GitHub Pages を有効化する手順
+## 公開 URL
 
-1. リポジトリ **Settings → Pages**
-2. **Source**: GitHub Actions
-3. `main` にマージ後、ワークフlow `.github/workflows/pages.yml` が自動実行
-4. 数分後 **https://yuitokyouni.github.io/akiya-sim/** で `index.html` が開く
+**https://yuitokyouni.github.io/akiya-sim/**
+
+（`main` への push で `gh-pages` ブランチに自動デプロイ）
+
+## 初回のみ（リポジトリ管理者）
+
+1. GitHub → **Settings → Pages**
+2. **Build and deployment → Source**: `Deploy from a branch`
+3. **Branch**: `gh-pages` / `/ (root)` → **Save**
+
+※ 初回 push 後に `gh-pages` ブランチが作成されます。ブランチが無いうちは設定できません。
 
 ## ローカル確認
 
@@ -16,18 +23,11 @@ python3 -m http.server 8765
 # http://localhost:8765/
 ```
 
-## いつ公開すべきか（判断基準）
+## ワークフロー
 
-| 公開してよい | まだ待つ |
-|-------------|---------|
-| ハッカソン審査・デモ URL が必要 | 大規模リファクタ直前で URL が毎日変わる |
-| `npm test` が通っている | 住調キャリブレーション未完了 |
-| 出典リンク・用語定義が UI にある | セルインスペクタ等で UI が激変する直前 |
-
-**現時点の推奨**: デモ URL が必要なら **今すぐ GitHub Pages でよい**。
-エンジン・データ生成はそのまま、UI は Vite 化はセルインスペクタ着手時でも遅くない（`docs/platform_options.md`）。
+`.github/workflows/pages.yml` — `main` push 時に `peaceiris/actions-gh-pages` で静的ファイルを `gh-pages` へ。
 
 ## 注意
 
-- 地理院タイルはブラウザから直接取得（CORS 可）。オフラインでは地図背景なしでカラムは表示される。
-- Pages では `docs/` 内の Markdown はそのままでは閲覧できない。監査文書は GitHub 上で見るか、将来 UI からリンク。
+- 地理院タイルはブラウザから直接取得。オフライン時は背景なしでカラム表示は継続。
+- `data/raw/` はデプロイ対象外（サイズ削減）。生成済み `*.gen.js` は含まれる。
