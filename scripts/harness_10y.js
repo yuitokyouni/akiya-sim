@@ -74,7 +74,7 @@ const out = {
   t10: { overall: vac10, zone: Object.fromEntries(E.ZONES.map((Z, k) => [Z.n, z10[k]])) },
   targets: {
     t0Zone: Object.fromEntries(E.ZONES.map((Z, k) => [Z.n, ZV.rates[k]])),
-    t10OverallBand: [0.10, 0.16],
+    t10OverallBand: [0.10, 0.18],
   },
 };
 

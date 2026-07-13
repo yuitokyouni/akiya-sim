@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>政策メカニズム — 空き家ABM</title>
+<style>
+  :root{--ink:#22313a;--ink2:#5b6b74;--line:#d3dad8;--paper:#eef1f0;--panel:#fff;--accent:#c04a2a;--tax:#2a6ac0;--sub:#2a8a4a}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+    background:var(--paper);color:var(--ink);line-height:1.65;font-size:14px}
+  header{padding:20px 24px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{margin:0;font-size:18px}
+  header p{margin:6px 0 0;color:var(--ink2);font-size:13px;max-width:52em}
+  nav{font-size:13px;margin-top:8px} nav a{margin-right:14px;color:var(--tax)}
+  main{max-width:960px;margin:0 auto;padding:20px 24px 40px}
+  section{margin-bottom:28px}
+  h2{font-size:15px;margin:0 0 10px;border-left:4px solid var(--accent);padding-left:10px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  th{background:#f6f8f7}
+  .flow{display:grid;gap:10px;margin-top:12px}
+  .box{border:2px solid var(--line);border-radius:8px;padding:12px 14px;background:#fafcfb}
+  .box.tax{border-color:var(--tax)} .box.sub{border-color:var(--sub)}
+  .arrow{text-align:center;color:var(--ink2);font-size:18px}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#f0f3f2;padding:2px 6px;border-radius:4px}
+  .warn{background:#fff8f0;border:1px solid #e8c8a0;border-radius:6px;padding:10px 12px;font-size:13px}
+  #audit-out{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap;
+    background:#1a2332;color:#e8ecef;padding:12px;border-radius:6px;max-height:280px;overflow:auto}
+  button{font:inherit;padding:8px 16px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:4px;cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <h1>政策が効くメカニズム（因果経路）</h1>
+  <p>スライダーとエンジン内部の変数がどう結びつくかを明示します。補助金は<strong>解体を選んだときだけ</strong>効きます。</p>
+  <nav>
+    <a href="map.html">地図ビュー</a>
+    <a href="dynamics.html">マクロ時系列</a>
+    <a href="akiya_abm_tokyo.html">格子ビュー</a>
+    <a href="docs/abm_audit.md">監査ドキュメント</a>
+  </nav>
+</header>
+<main>
+  <section>
+    <h2>状態の意味（住調2023 対応）</h2>
+    <div class="panel">
+      <table>
+        <tr><th>ABM</th><th>名称</th><th>住調2023</th></tr>
+        <tr><td><code>S_OCC</code></td><td>居住</td><td>居住世帯あり</td></tr>
+        <tr><td><code>S_RENT</code></td><td>賃貸中</td><td>居住世帯あり</td></tr>
+        <tr><td><code>S_SALE</code></td><td>売出中</td><td>空き家 — 売却用</td></tr>
+        <tr><td><code>S_LIST</code></td><td>募集中</td><td>空き家 — 賃貸用</td></tr>
+        <tr><td><code>S_NEG</code></td><td>放置</td><td>空き家 — その他（処分活動なし）</td></tr>
+        <tr><td><code>S_DEMO</code></td><td>更地</td><td>住宅ストックから除外（再利用フロー未実装）</td></tr>
+      </table>
+      <p style="margin:10px 0 0;font-size:13px;color:var(--ink2)">
+        <strong>空き家率</strong>＝売出+募集+放置。<strong>放置</strong>はその部分集合。更地は空き家ではありません。
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <h2>因果経路（年1回の所有者意思決定）</h2>
+    <div class="flow">
+      <div class="box">空き家セル <code>S_SALE|S_LIST|S_NEG</code></div>
+      <div class="arrow">↓ 確率 <code>pDecide</code></div>
+      <div class="box tax"><strong>空き家課税 pol.tax</strong><br>
+        ① <code>holdTax = (holdCost + tax/100×資産価値) × 10年</code> → 放置・売却の機会費用↑<br>
+        ② <code>pDecide × (1 + 0.25×tax)</code> → 意思決定頻度↑（税通知の代理）</div>
+      <div class="arrow">↓ 効用比較（+ノイズ）</div>
+      <div class="box">選択: 売却 <code>uSell</code> / 賃貸 <code>uRent</code> / 放置 <code>uNeg</code> / 解体 <code>uDemo</code></div>
+      <div class="box sub"><strong>解体補助 pol.sub</strong><br>
+        唯一の経路: <code>uDemo = 更地価値 + … − (demoCost − pol.sub) − …</code><br>
+        <code>holdTax</code> や <code>pDecide</code> には<strong>入らない</strong></div>
+      <div class="arrow">↓</div>
+      <div class="box">解体選択 → <code>S_DEMO</code>（終端・再利用なし）</div>
+    </div>
+    <div class="warn" style="margin-top:14px">
+      旧バグ: 解体0件でも補助スライダーで空き家率が変わったように見えた → 実際は<strong>課税</strong>だけが効いていた。
+      現在は <code>npm run harness:audit</code> で tax/sub の独立効果を検証。
+    </div>
+  </section>
+
+  <section>
+    <h2>数値検証（同一 seed=42, 60年）</h2>
+    <div class="panel">
+      <button type="button" id="btnAudit">監査を実行</button>
+      <pre id="audit-out">（ボタンで scripts/harness_audit.js 相当をブラウザ内計算）</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>将来: 土地利用政策（ビオトープ・森など）</h2>
+    <div class="panel" style="font-size:13px;color:var(--ink2)">
+      現状は <code>S_DEMO</code> 終端のみ。拡張案: 更地から <code>S_BIO</code> / <code>S_FOREST</code> へ遷移する効用
+      <code>uLandUse</code> を追加し、補助・碳素クレジットを感度分析。所有者エージェントの属性（attach・遠隔）が
+      「売却より緑化」を選ぶ条件を評価する。
+    </div>
+  </section>
+</main>
+
+<script src="data/zone_grid.gen.js"></script>
+<script src="data/zones_vac.gen.js"></script>
+<script src="engine.js"></script>
+<script>
+"use strict";
+const { makeWorld, step } = AkiyaEngine;
+
+document.getElementById("btnAudit").onclick = () => {
+  const years = 60, seed = 42;
+  function run(tax, sub) {
+    const w = makeWorld(seed, { tax, sub });
+    for (let y = 0; y < years; y++) step(w);
+    const L = w.hist.vac.length;
+    return {
+      vac: (w.hist.vac[L - 1] * 100).toFixed(2) + "%",
+      demo: (w.hist.demo[L - 1] * 100).toFixed(2) + "%",
+      neg: (w.hist.neg[L - 1] * 100).toFixed(2) + "%",
+    };
+  }
+  const base = run(0, 0);
+  const taxOnly = run(2, 0);
+  const subOnly = run(0, 150);
+  const both = run(2, 150);
+  const lines = [
+    "政策パス監査（ブラウザ内 engine.js）",
+    "",
+    `ベースライン (0%, 0万)    空き家 ${base.vac}  更地 ${base.demo}  放置 ${base.neg}`,
+    `課税のみ (2%, 0万)       空き家 ${taxOnly.vac}  更地 ${taxOnly.demo}  放置 ${taxOnly.neg}`,
+    `補助のみ (0%, 150万)     空き家 ${subOnly.vac}  更地 ${subOnly.demo}  放置 ${subOnly.neg}`,
+    `両方 (2%, 150万)         空き家 ${both.vac}  更地 ${both.demo}  放置 ${both.neg}`,
+    "",
+    "解釈:",
+    "・補助のみで更地が増える → uDemo 経路が機能",
+    "・課税のみで更地が増えない → sub は uDemo 専用",
+    "・課税で空き家↓ → holdTax / pDecide 経路",
+  ];
+  document.getElementById("audit-out").textContent = lines.join("\n");
+};
+</script>
+</body>
+</html>

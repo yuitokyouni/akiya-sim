@@ -41,7 +41,7 @@ function makeWorld(seed,policy){
   const rng=mulberry32(seed);
   const loc=new Float32Array(N), q=new Float32Array(N), st=new Uint8Array(N);
   const oAge=new Float32Array(N), oRemote=new Uint8Array(N), oCo=new Uint8Array(N);
-  const ZV=(typeof ZONES_VAC!=="undefined"?ZONES_VAC:{rates:ZONES.map(()=>0.109),negFrac:ZONES.map(()=>0.45)});
+  const ZV=(typeof ZONES_VAC!=="undefined"?ZONES_VAC:{rates:ZONES.map(()=>0.109),negFrac:ZONES.map(()=>0.45),saleFrac:ZONES.map(()=>0.15),listFrac:ZONES.map(()=>0.35)});
   const byZone=ZONES.map(()=>[]);
   for(let i=0;i<N;i++) if(zone[i]>=0) byZone[zone[i]].push(i);
   function shuffle(a){
@@ -51,6 +51,9 @@ function makeWorld(seed,policy){
     const idx=byZone[z]; shuffle(idx);
     const nVac=Math.round((ZV.rates[z]||0.109)*idx.length);
     const nNeg=Math.min(nVac, Math.round((ZV.negFrac[z]||0.45)*nVac));
+    const nSale=Math.min(nVac-nNeg, Math.round((ZV.saleFrac[z]||0.15)*nVac));
+    const nList=Math.max(0, Math.min(nVac-nNeg-nSale, Math.round((ZV.listFrac[z]||0.35)*nVac)));
+    const nVacActive=nNeg+nSale+nList;
     for(let k=0;k<idx.length;k++){
       const i=idx[k];
       const Z=ZONES[z];
@@ -60,9 +63,14 @@ function makeWorld(seed,policy){
       q[i]=0.45+0.5*rng();
       oAge[i]=35+45*rng()+Z.ageS;
       oRemote[i]=rng()<0.12?1:0; oCo[i]=1;
-      if(k<nVac){
-        if(k<nNeg) st[i]=S_NEG;
-        else st[i]=rng()<0.45?S_SALE:S_LIST;
+      if(k<nNeg){
+        st[i]=S_NEG;
+      }else if(k<nNeg+nSale){
+        st[i]=S_SALE;
+      }else if(k<nNeg+nSale+nList){
+        st[i]=S_LIST;
+      }else if(k<nVac){
+        st[i]=S_LIST;
       }else{
         st[i]=rng()<0.88?S_OCC:S_RENT;
       }

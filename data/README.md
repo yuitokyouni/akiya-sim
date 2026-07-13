@@ -14,6 +14,11 @@
 | `zones_vac.gen.js` | ブラウザ/node 用 `ZONES_VAC`（engine 初期化） |
 | `muni_vac_jyutaku2023.csv` | 区市町村別 住調2023 空き家率 |
 | `raw/jyutaku_1-2_total.xlsx` | 住調2023 第1-2表 原本（e-Stat） |
+| `muni_vac_types_jyutaku2023.csv` | 区市町村別 空き家種類（t5） |
+| `zones_vac_types_jyutaku2023.csv` | 6地域 空き家種類シェア |
+| `demo_subsidy_muni.csv` | 区市町村別 解体補助上限（キュレーション） |
+| `demo_subsidy.gen.js` | 地域平均補助（参照用） |
+| `raw/tokyo_kaitai_seiri_official.md` | 都解体促進事業メモ |
 
 再生成:
 
@@ -21,6 +26,8 @@
 python3 scripts/build_zones_mig.py
 python3 scripts/build_zone_grid.py
 python3 scripts/build_zones_vac_jyutaku2023.py
+python3 scripts/build_vac_types_jyutaku2023.py
+python3 scripts/build_demo_subsidy_muni.py
 ```
 
-N03 格子: `docs/n03_zone_grid.md` — 住調キャリブレーション: `docs/validation_jyutaku2023.md`
+ドキュメント: `docs/n03_zone_grid.md` · `docs/validation_jyutaku2023.md` · `docs/validation_vac_types_jyutaku2023.md`

@@ -6,6 +6,7 @@
     "harness:10y": "node scripts/harness_10y.js",
     "harness:60y": "node scripts/harness_60y.js",
     "harness:audit": "node scripts/harness_audit.js",
+    "build:t5": "python3 scripts/build_vac_types_jyutaku2023.py && python3 scripts/build_demo_subsidy_muni.py",
     "smoke:map": "node scripts/smoke_map.js"
   },
   "devDependencies": {

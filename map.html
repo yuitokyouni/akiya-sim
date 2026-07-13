@@ -70,7 +70,8 @@
 <div id="js-err"></div>
 <aside id="panel">
   <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
-  <p>左右に<strong>同一シード</strong>のベースライン／介入を並列表示。背景は<a href="https://maplibre.org/" target="_blank" rel="noopener">MapLibre GL</a> + 地理院タイル（東京都域に制限）。</p>
+  <p>左右に<strong>同一シード</strong>のベースライン／介入を並列表示。
+    <a href="mechanism.html">メカニズム</a> · <a href="dynamics.html">時系列</a></p>
   <label class="row">シード <input id="seed" type="number" value="42"></label>
   <label class="row">年 <span class="num" id="yearLbl">0</span></label>
   <input type="range" id="year" min="0" max="60" step="1" value="0">
@@ -211,25 +212,41 @@ try {
   let simPol = null;
   let playTimer = null;
   let syncing = false;
+  let fitZoom = 9.2;
+
+  function applyZoomLimits(map) {
+    map.setMinZoom(fitZoom);
+    map.setMaxZoom(fitZoom + 2.2);
+  }
 
   function createMapPair(id) {
     const map = new maplibregl.Map({
       container: id,
       style: MAP_STYLE,
       center: TOKYO_CENTER,
-      zoom: 9.4,
+      zoom: 9.2,
       pitch: 48,
       bearing: -12,
       antialias: true,
       maxBounds: TOKYO_BOUNDS,
-      minZoom: 8.5,
-      maxZoom: 14,
     });
     map.on("error", () => {
       document.getElementById("tile-warn").style.display = "block";
     });
     map.on("load", () => {
-      map.fitBounds(TOKYO_BOUNDS, { padding: 24, duration: 0 });
+      map.fitBounds(TOKYO_BOUNDS, { padding: 28, duration: 0 });
+      if (id === "map-base") {
+        fitZoom = map.getZoom();
+        applyZoomLimits(mapBase);
+        applyZoomLimits(mapPol);
+        mapPol.jumpTo({
+          center: map.getCenter(),
+          zoom: fitZoom,
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
+        });
+      }
+      refreshLayers();
     });
     return map;
   }
