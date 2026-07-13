@@ -99,7 +99,18 @@
     }
     .chart-box h3 { margin: 0 0 6px; font-size: 0.88rem; font-weight: 600; }
     .chart-box p { margin: 0 0 6px; font-size: 0.75rem; color: var(--muted); }
-    .chart-box canvas { width: 100%; height: 180px; }
+    /* Chart.js は maintainAspectRatio:false 時、親の高さが固定されていないと canvas が際限なく伸びる */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      overflow: hidden;
+    }
+    .chart-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
     .section-title {
       font-size: 0.95rem;
       font-weight: 600;
@@ -471,6 +482,7 @@ function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
     const opt = {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { labels: { color: "#9fb0c3", boxWidth: 12, font: { size: 10 } } },
@@ -492,7 +504,9 @@ function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
   function addChartBox(parent, def) {
     const box = document.createElement("div");
     box.className = "chart-box";
-    box.innerHTML = `<h3>${def.title}</h3><p>${def.sub}</p><canvas id="c_${def.id}"></canvas>`;
+    box.innerHTML =
+      `<h3>${def.title}</h3><p>${def.sub}</p>` +
+      `<div class="chart-wrap"><canvas id="c_${def.id}"></canvas></div>`;
     parent.appendChild(box);
     return document.getElementById("c_" + def.id);
   }
