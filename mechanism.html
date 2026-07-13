@@ -62,7 +62,7 @@
   </section>
 
   <section>
-    <h2>Phase 1: 非経済経路（ステイマ・家計余裕・区切り解体）</h2>
+    <h2>Phase 1: 非経済経路（社会的規範・家計余裕・区切り解体）</h2>
     <div class="panel">
       <p style="margin:0 0 10px;font-size:13px">
         損得だけでは説明しにくい行動を、家計余裕 <code>ownerWealth = loc × q × 地域所得</code> で簡易代理します。
@@ -70,9 +70,9 @@
       <table>
         <tr><th>経路</th><th>仮説</th><th>実装</th></tr>
         <tr>
-          <td><strong>ステイマ</strong></td>
+          <td><strong>社会的規範</strong><br><span style="font-size:12px;color:var(--ink2)">（周囲の目・体面）</span></td>
           <td>経済的余裕がある層は周囲の目を気にし、長期放置しにくい</td>
-          <td><code>stigmaCost</code> が放置効用 <code>uNeg</code> を悪化（wealth&gt;0.42）。長期放置で <code>pDecide</code> も微増</td>
+          <td><code>normCost</code> が放置効用 <code>uNeg</code> を悪化（wealth&gt;0.42）。長期放置で <code>pDecide</code> も微増</td>
         </tr>
         <tr>
           <td><strong>家計余裕不足</strong></td>
@@ -102,7 +102,7 @@
       <div class="arrow">↓ 効用比較（+ノイズ）</div>
       <div class="box">選択: 売却 <code>uSell</code> / 賃貸 <code>uRent</code> / 放置 <code>uNeg</code> / 解体 <code>uDemo</code>
         <br><span style="font-size:12px;color:var(--ink2)">
-          非経済: <code>uNeg</code> に <code>−stigmaCost</code>、<code>uRent/uDemo</code> に <code>−cashStress</code>、<code>uDemo</code> に <code>+closureRelief</code>
+          非経済: <code>uNeg</code> に <code>−normCost</code>、<code>uRent/uDemo</code> に <code>−cashStress</code>、<code>uDemo</code> に <code>+closureRelief</code>
         </span></div>
       <div class="box sub"><strong>解体補助 pol.sub</strong><br>
         唯一の経路: <code>uDemo = 更地価値 + … − (demoCost − pol.sub) − …</code><br>
@@ -169,7 +169,7 @@ document.getElementById("btnAudit").onclick = () => {
     "・補助のみで更地が増える → uDemo 経路が機能",
     "・課税のみで更地が増えない → sub は uDemo 専用",
     "・課税で空き家↓ → holdTax / pDecide 経路",
-    "・放置は家計余裕の低い層に偏る（stigma / poorBar）",
+    "・放置は家計余裕の低い層に偏る（norm / poorBar）",
     "・ベースでも長期放置+老朽で更地が少量発生（closure）",
   ];
   document.getElementById("audit-out").textContent = lines.join("\n");

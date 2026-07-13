@@ -27,14 +27,14 @@
 
 | パラメータ | 意味 | 効く効用 |
 |------------|------|----------|
-| `stigmaK` | ステイマ（余裕層ほど放置しにくい） | `uNeg` を悪化、`pDecide` 微増 |
+| `normK` | 社会的規範・周囲の目（余裕層ほど放置しにくい） | `uNeg` を悪化、`pDecide` 微増 |
 | `poorBar` | 家計余裕不足（前払い負担） | `uRent`, `uDemo` に `cashStress`。**`uSell` には非適用** |
 | `closureK` | 区切り解体（遠隔・共有・長期放置） | `uDemo` に `closureRelief` |
 | — | 老朽化（15年超放置） | `structuralClosure` + 解体の `cashStress` 緩和 |
 
 **解釈（ユーザー仮説の代理）**
 
-- 余裕層: 周囲の目・ステイマで長期 `S_NEG` を避け、売却・賃貸へ
+- 余裕層: 周囲の目・社会的規範で長期 `S_NEG` を避け、売却・賃貸へ
 - 余裕不足層: 改修・解体の前払いが重く `cashStress` で行動しにくい → 放置に留まりやすい
 - 長期放置・遠隔・共有名義: 非金銭的「区切り」としてベースでも少量の `S_DEMO` が発生
 
@@ -93,7 +93,7 @@ node scripts/harness_60y.js
 
 - [x] tax / sub の独立効果を数値確認
 - [x] 更地が終端状態であることを文書化
-- [x] Phase 1 非経済経路（stigma / poorBar / closure）を文書化
+- [x] Phase 1 非経済経路（norm / poorBar / closure）を文書化
 - [ ] セル単位の遷移ログ（t6 で UI 化予定）
 - [ ] 解体率の実調査キャリブレーション（t5）
 - [ ] 土地利用政策の engine 拡張（t6/t7 と連動）
