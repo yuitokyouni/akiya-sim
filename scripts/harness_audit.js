@@ -74,8 +74,9 @@ const checks = [
   ["tax は空き家率を下げる", taxOnly.vac < base.vac],
   ["sub は更地を増やす", subOnly.demo > base.demo],
   ["tax単独では更地は増えない（現パラメータ）", taxOnly.demo <= base.demo + 0.001],
-  ["both は taxOnly より空き家率低い", both.vac <= taxOnly.vac],
-  ["both でも更地はベースより増える", both.demo > base.demo + 0.05],
+  ["both は taxOnly と同程度以下", both.vac <= taxOnly.vac + 0.002],
+  ["both でも更地はベースより増える", both.demo > base.demo + 0.02],
+  ["税+補助で更地が過剰に増えない", both.demo < 0.20],
   ["S_DEMO からの遷移なし（再利用未実装）", countStates(both.st).demo >= 0],
 ];
 

@@ -105,8 +105,9 @@
           非経済: <code>uNeg</code> に <code>−normCost</code>、<code>uRent/uDemo</code> に <code>−cashStress</code>、<code>uDemo</code> に <code>+closureRelief</code>
         </span></div>
       <div class="box sub"><strong>解体補助 pol.sub</strong><br>
-        唯一の経路: <code>uDemo = 更地価値 + … − (demoCost − pol.sub) − …</code><br>
-        <code>holdTax</code> や <code>pDecide</code> には<strong>入らない</strong></div>
+        経路: <code>uDemo = … − (demoCost − subCredit) − …</code><br>
+        <code>subCredit = min(demoCost×52%, pol.sub×76%)</code> — スライダー150万は<strong>様式化</strong>（都の実補助は上限約10万）<br>
+        補助時は <code>closureRelief</code> を減衰（区切り解体と二重カウントしない）</div>
       <div class="arrow">↓</div>
       <div class="box">解体選択 → <code>S_DEMO</code>（終端・再利用なし）</div>
     </div>
