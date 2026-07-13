@@ -30,14 +30,35 @@
     header p { margin: 0; color: var(--muted); font-size: 0.88rem; max-width: 920px; }
     nav { margin-top: 8px; font-size: 0.85rem; }
     nav a { color: var(--accent); margin-right: 14px; }
-    .wrap { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 88px); }
-    @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
-    aside {
-      padding: 14px;
-      border-right: 1px solid var(--border);
+    .wrap { display: flex; flex-direction: column; min-height: calc(100vh - 88px); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
       background: var(--panel);
+      align-items: flex-start;
     }
-    main { padding: 14px 18px 28px; overflow: auto; }
+    .toolbar .card { flex: 1 1 280px; margin-bottom: 0; max-width: 100%; }
+    .toolbar .card.map-card { flex: 1 1 360px; }
+    .toolbar .ctrl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px 12px;
+      align-items: end;
+    }
+    .toolbar .ctrl-grid label { margin: 0; }
+    .toolbar input[type="number"],
+    .toolbar input[type="range"] { width: 100%; }
+    .toolbar input[type="number"] {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b1219;
+      color: var(--text);
+    }
+    main { padding: 14px 18px 28px; overflow: auto; flex: 1; }
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -64,7 +85,7 @@
     .stat b { color: var(--text); }
     canvas#mapCanvas {
       width: 100%;
-      max-width: 336px;
+      max-width: 504px;
       aspect-ratio: 84 / 26;
       border-radius: 8px;
       border: 1px solid var(--border);
@@ -139,7 +160,7 @@
     <h1>マクロ動態・所有者属性 <span class="pill">dynamics</span></h1>
     <p>
       マクロ指標（空き家率・状態別ストック・年次遷移）に加え、<strong>空き家セルの所有者属性</strong>（平均年齢・遠隔・共有名義・愛着・放置年数）を時系列で表示します。
-      左の格子にカーソルを合わせるとセル単位の状況がポップアップします。
+      上部の格子にカーソルを合わせるとセル単位の状況がポップアップします。
     </p>
     <nav>
       <a href="akiya_abm_tokyo.html">シミュレータ</a>
@@ -152,32 +173,43 @@
   <div id="tooltip"></div>
 
   <div class="wrap">
-    <aside>
+    <div class="toolbar">
       <div class="card">
         <h2>政策・実行</h2>
-        <label>固定資産税（空き家） <span id="taxVal">2.0%</span></label>
-        <input type="range" id="tax" min="0" max="3" step="0.1" value="2"/>
-        <label>解体補助 <span id="subVal">150</span> 万円/棟</label>
-        <input type="range" id="sub" min="0" max="200" step="10" value="150"/>
-        <label>シード</label>
-        <input type="number" id="seed" value="42" min="1" max="99999" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:#0b1219;color:var(--text);"/>
-        <label>シミュレーション年数</label>
-        <input type="number" id="years" value="30" min="5" max="60" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:#0b1219;color:var(--text);"/>
-        <div class="row" style="margin-top:10px;">
-          <button class="primary" id="runBtn">再計算</button>
+        <div class="ctrl-grid">
+          <div>
+            <label>固定資産税（空き家） <span id="taxVal">2.0%</span></label>
+            <input type="range" id="tax" min="0" max="3" step="0.1" value="2"/>
+          </div>
+          <div>
+            <label>解体補助 <span id="subVal">150</span> 万円/棟</label>
+            <input type="range" id="sub" min="0" max="200" step="10" value="150"/>
+          </div>
+          <div>
+            <label>シード</label>
+            <input type="number" id="seed" value="42" min="1" max="99999"/>
+          </div>
+          <div>
+            <label>シミュレーション年数</label>
+            <input type="number" id="years" value="30" min="5" max="60"/>
+          </div>
+          <div class="row" style="align-items:flex-end;">
+            <button class="primary" id="runBtn">再計算</button>
+          </div>
         </div>
         <div class="stat" id="runStat">待機中</div>
       </div>
 
-      <div class="card">
+      <div class="card map-card">
         <h2>格子マップ（ホバーで詳細）</h2>
-        <div class="row" style="margin-bottom:8px;">
+        <div class="row" style="margin-bottom:8px;gap:14px;">
           <label style="margin:0;"><input type="radio" name="view" value="int" checked/> 介入</label>
-          <label style="margin:0;margin-left:10px;"><input type="radio" name="view" value="base"/> ベースライン</label>
+          <label style="margin:0;"><input type="radio" name="view" value="base"/> ベースライン</label>
+          <label style="margin:0;flex:1;min-width:160px;">表示年 <span id="yearLbl">0</span>
+            <input type="range" id="yearSlider" min="0" max="30" value="0" style="margin-top:4px;"/>
+          </label>
         </div>
-        <label>表示年 <span id="yearLbl">0</span></label>
-        <input type="range" id="yearSlider" min="0" max="30" value="0"/>
-        <canvas id="mapCanvas" width="336" height="104"></canvas>
+        <canvas id="mapCanvas" width="504" height="156"></canvas>
         <div class="map-legend">
           <span style="background:#aeb9be;"></span>居住
           <span style="background:#8fa8a0;margin-left:6px;"></span>賃貸
@@ -187,7 +219,7 @@
           <span style="background:#e6e2d8;margin-left:6px;"></span>更地
         </div>
       </div>
-    </aside>
+    </div>
 
     <main>
       <div class="section-title">マクロ指標（% / 件数）</div>
