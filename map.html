@@ -15,17 +15,17 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
     font-size:14px;color:var(--ink);background:#121820}
-  /* filter は WebGL 地図を壊すので使わない — タイル側で暗くする */
-  #map-wrap{position:absolute;inset:0;display:flex;flex-direction:column}
-  #map-labels{display:flex;z-index:2;pointer-events:none}
-  #map-labels span{flex:1;text-align:center;font-size:12px;font-weight:600;padding:8px 0;
-    background:linear-gradient(to bottom,rgba(18,24,32,.85),transparent)}
-  #map-labels .pol{color:#f0a080}
-  #map-inner{position:relative;flex:1;min-height:0}
-  #map{width:100%;height:100%;background:#1a2332}
-  #deck-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  #panel{position:absolute;top:12px;left:12px;width:280px;background:var(--panel);border:1px solid var(--line);
-    border-radius:8px;padding:14px;z-index:2;backdrop-filter:blur(6px)}
+  #map-wrap{position:absolute;inset:0;display:flex}
+  .map-pane{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;border-right:2px solid var(--line)}
+  .map-pane:last-child{border-right:none}
+  .map-pane-label{text-align:center;font-size:12px;font-weight:600;padding:6px 0;
+    background:rgba(18,24,32,.9);z-index:2;flex-shrink:0}
+  .map-pane.pol .map-pane-label{color:#f0a080}
+  .map-container{position:relative;flex:1;min-height:0}
+  .map-container .map{width:100%;height:100%;background:#1a2332}
+  .map-container canvas.deck-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #panel{position:absolute;top:12px;left:12px;width:300px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;padding:14px;z-index:10;backdrop-filter:blur(6px);max-height:calc(100vh - 24px);overflow-y:auto}
   #panel h1{margin:0 0 4px;font-size:15px;font-weight:700}
   #panel p{margin:0 0 10px;font-size:11.5px;color:var(--ink2);line-height:1.5}
   label.row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin:8px 0 4px}
@@ -36,7 +36,6 @@
   button{font:inherit;font-size:12.5px;padding:5px 12px;border:1px solid var(--ink);border-radius:4px;
     background:var(--ink);color:#121820;cursor:pointer}
   button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-  button.active{background:var(--accent);border-color:var(--accent);color:#fff}
   button:disabled{opacity:.45;cursor:default}
   .stats{font-size:11.5px;color:var(--ink2);margin-top:10px;line-height:1.65}
   .stats .world{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
@@ -46,10 +45,11 @@
   .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ink2);margin-top:8px}
   .legend span{display:inline-flex;align-items:center;gap:4px}
   .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
-  #notice{position:absolute;bottom:12px;left:12px;right:12px;max-width:640px;font-size:11.5px;color:var(--ink2);
-    background:rgba(18,24,32,.88);border:1px solid var(--line);border-radius:6px;padding:8px 12px;z-index:2}
+  .glossary{font-size:10.5px;color:var(--ink2);margin-top:8px;line-height:1.5;border-top:1px solid var(--line);padding-top:8px}
+  #notice{position:absolute;bottom:12px;left:312px;right:12px;font-size:11.5px;color:var(--ink2);
+    background:rgba(18,24,32,.88);border:1px solid var(--line);border-radius:6px;padding:8px 12px;z-index:10}
   #tile-warn,#js-err{position:absolute;top:12px;right:12px;max-width:420px;font-size:11px;
-    background:rgba(18,24,32,.92);border-radius:6px;padding:6px 10px;z-index:3;display:none}
+    background:rgba(18,24,32,.92);border-radius:6px;padding:6px 10px;z-index:11;display:none}
   #tile-warn{color:#f0c080;border:1px solid #6a5030}
   #js-err{color:#ffb4b4;border:1px solid #6a3030;white-space:pre-wrap}
   .num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
@@ -57,14 +57,20 @@
 </head>
 <body>
 <div id="map-wrap">
-  <div id="map-labels"><span>ベースライン（政策なし）</span><span class="pol">介入</span></div>
-  <div id="map-inner"><div id="map"></div><canvas id="deck-canvas"></canvas></div>
+  <div class="map-pane" id="pane-base">
+    <div class="map-pane-label">ベースライン（政策なし）</div>
+    <div class="map-container"><div id="map-base" class="map"></div><canvas id="deck-base" class="deck-canvas"></canvas></div>
+  </div>
+  <div class="map-pane pol" id="pane-pol">
+    <div class="map-pane-label">介入</div>
+    <div class="map-container"><div id="map-pol" class="map"></div><canvas id="deck-pol" class="deck-canvas"></canvas></div>
+  </div>
 </div>
 <div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
 <div id="js-err"></div>
 <aside id="panel">
   <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
-  <p>84×26 格子を N03 行政区域でマスクし、東京都本土部へアフィン射影。1セル≠1建物。</p>
+  <p>左右に<strong>同一シード</strong>のベースライン／介入を並列表示。背景は<a href="https://maplibre.org/" target="_blank" rel="noopener">MapLibre GL</a> + 地理院タイル（東京都域に制限）。</p>
   <label class="row">シード <input id="seed" type="number" value="42"></label>
   <label class="row">年 <span class="num" id="yearLbl">0</span></label>
   <input type="range" id="year" min="0" max="60" step="1" value="0">
@@ -72,10 +78,6 @@
   <input type="range" id="tax" min="0" max="3" step="0.1" value="2">
   <label class="row">解体補助（介入） <span class="num" id="vSub">150万</span></label>
   <input type="range" id="sub" min="0" max="200" step="10" value="150">
-  <div style="font-size:10.5px;color:var(--ink2);margin:-2px 0 6px;line-height:1.45">
-    補助は<strong>解体選択時のみ</strong>効きます（更地は現状再利用なし）。地図は左右にベースライン／介入を並列表示。
-  </div>
-  <label class="row"><input type="checkbox" id="plateau"> PLATEAU建物（3D Tiles）</label>
   <div class="btns">
     <button type="button" id="btnRun">▶ 60年実行</button>
     <button type="button" id="btnPlay" class="ghost">アニメ</button>
@@ -92,19 +94,23 @@
         放置 <b class="num" id="negPol">–</b>
         更地 <b class="num" id="demoPol">–</b></div>
     </div>
-    クラスタ <b class="num" id="clu">–</b>（介入） · 差分セル <b class="num" id="diffN">–</b>
+    差分セル <b class="num" id="diffN">–</b>
   </div>
   <div class="legend">
     <span><i class="sw" style="background:var(--c-occ)"></i>居住</span>
     <span><i class="sw" style="background:var(--c-rent)"></i>賃貸</span>
-    <span><i class="sw" style="background:var(--c-list)"></i>売出</span>
+    <span><i class="sw" style="background:var(--c-list)"></i>売出/募集</span>
     <span><i class="sw" style="background:var(--c-neg)"></i>放置</span>
     <span><i class="sw" style="background:var(--c-demo)"></i>更地</span>
   </div>
+  <div class="glossary">
+    <strong>用語</strong> — 空き家＝売出+募集+放置。放置は空き家の一部（処分活動なし）。
+    更地は建物解体後（空き家ではない）。現モデルでは<strong>更地の再利用・新築なし</strong>。
+    監査: <a href="docs/abm_audit.md" target="_blank" rel="noopener">abm_audit.md</a>
+  </div>
 </aside>
-<div id="notice"><strong>様式化・統計的表示</strong> — 84×26 格子を N03 本土部マスクの上に地理院タイルへ射影したものです。
-  初期空き家率は <a href="docs/validation_jyutaku2023.md" target="_blank" rel="noopener">住調2023</a> に合わせています。
-  セル位置・高さはモデル出力の統計量（近傍空き家率・状態）であり、実在建物の位置を示しません。</div>
+<div id="notice"><strong>様式化・統計的表示</strong> — 格子は N03 本土部マスク上に射影。住調2023 初期化。
+  将来: 更地→ビオトープ等の土地利用政策を ABM に拡張予定（現状は解体まで）。</div>
 
 <script src="data/zone_grid.gen.js"></script>
 <script src="data/zones_vac.gen.js"></script>
@@ -120,19 +126,24 @@ function showErr(msg) {
 }
 
 try {
-  if (typeof AkiyaEngine === "undefined") throw new Error("engine.js が読み込めません。map.html と同じフォルダに engine.js があるか確認してください。");
+  if (typeof AkiyaEngine === "undefined") throw new Error("engine.js が読み込めません");
   if (typeof maplibregl === "undefined") throw new Error("maplibre-gl の読み込みに失敗しました");
   if (typeof deck === "undefined") throw new Error("deck.gl の読み込みに失敗しました");
 
-  const { Deck, ColumnLayer, Tile3DLayer } = deck;
-
+  const { Deck, ColumnLayer } = deck;
   const E = AkiyaEngine;
-  const {
-    W, H, N, zone, COLORS, makeWorld, neighborVac, step,
-    S_SALE, S_NEG, S_DEMO,
-  } = E;
+  const { W, H, N, zone, COLORS, makeWorld, step, S_SALE, S_NEG, S_DEMO } = E;
 
   const AFFINE = { lon0: 138.95, lon1: 139.93, latN: 35.82, latS: 35.53 };
+  const TOKYO_BOUNDS = [
+    [AFFINE.lon0 - 0.02, AFFINE.latS - 0.02],
+    [AFFINE.lon1 + 0.02, AFFINE.latN + 0.02],
+  ];
+  const TOKYO_CENTER = [
+    (AFFINE.lon0 + AFFINE.lon1) / 2,
+    (AFFINE.latN + AFFINE.latS) / 2,
+  ];
+
   function gridToLngLat(x, y) {
     const lon = AFFINE.lon0 + (x / (W - 1)) * (AFFINE.lon1 - AFFINE.lon0);
     const lat = AFFINE.latN - (y / (H - 1)) * (AFFINE.latN - AFFINE.latS);
@@ -148,14 +159,10 @@ try {
     }
   }
 
-  const PLATEAU_URL =
-    "https://api.plateauview.mlit.go.jp/datacatalog/3dtiles/13-bldg-lod1-latest/tileset.json";
-
   function hexRgb(hex) {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 220];
   }
-
   function pct(v) { return (v * 100).toFixed(1) + "%"; }
 
   function simulate(seed, policy, years) {
@@ -168,76 +175,69 @@ try {
     return { hist: w.hist, snaps };
   }
 
-  const LON_SHIFT = 0.058;
-
-  function columnData(st, lonShift) {
-    const nv = neighborVac({ st });
-    return CELLS.map(({ i, position }) => {
-      const s = st[i];
-      const vacRate = nv[i];
-      return {
-        position: [position[0] + lonShift, position[1]],
-        color: hexRgb(COLORS[s]),
-        height: 40 + vacRate * 1400,
-        i,
-      };
-    });
+  function columnData(st) {
+    return CELLS.map(({ i, position }) => ({
+      position,
+      color: hexRgb(COLORS[st[i]]),
+      height: 40 + (st[i] >= S_SALE && st[i] <= S_NEG ? 800 : st[i] === S_DEMO ? 200 : 400),
+      i,
+    }));
   }
 
-  function diffData(stA, stB, lonShift) {
-    const out = [];
-    for (const { i, position } of CELLS) {
-      if (stA[i] === stB[i]) continue;
-      out.push({
-        position: [position[0] + lonShift, position[1]],
-        i,
-      });
-    }
-    return out;
-  }
+  const MAP_STYLE = {
+    version: 8,
+    sources: {
+      gsi: {
+        type: "raster",
+        tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        maxzoom: 18,
+        attribution: "地理院タイル",
+      },
+    },
+    layers: [{
+      id: "gsi",
+      type: "raster",
+      source: "gsi",
+      paint: {
+        "raster-brightness-min": 0.08,
+        "raster-brightness-max": 0.45,
+        "raster-saturation": -0.35,
+      },
+    }],
+  };
 
   let simBase = null;
   let simPol = null;
   let playTimer = null;
-  let plateauOn = false;
-  let deckInstance = null;
+  let syncing = false;
 
-  const map = new maplibregl.Map({
-    container: "map",
-    style: {
-      version: 8,
-      sources: {
-        gsi: {
-          type: "raster",
-          tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
-          tileSize: 256,
-          maxzoom: 18,
-          attribution: "地理院タイル",
-        },
-      },
-      layers: [{
-        id: "gsi",
-        type: "raster",
-        source: "gsi",
-        paint: {
-          "raster-brightness-min": 0.08,
-          "raster-brightness-max": 0.45,
-          "raster-saturation": -0.35,
-        },
-      }],
-    },
-    center: [139.72, 35.66],
-    zoom: 9.2,
-    pitch: 50,
-    bearing: -15,
-    antialias: true,
-  });
+  function createMapPair(id) {
+    const map = new maplibregl.Map({
+      container: id,
+      style: MAP_STYLE,
+      center: TOKYO_CENTER,
+      zoom: 9.4,
+      pitch: 48,
+      bearing: -12,
+      antialias: true,
+      maxBounds: TOKYO_BOUNDS,
+      minZoom: 8.5,
+      maxZoom: 14,
+    });
+    map.on("error", () => {
+      document.getElementById("tile-warn").style.display = "block";
+    });
+    map.on("load", () => {
+      map.fitBounds(TOKYO_BOUNDS, { padding: 24, duration: 0 });
+    });
+    return map;
+  }
 
-  map.on("error", () => {
-    document.getElementById("tile-warn").style.display = "block";
-  });
+  const mapBase = createMapPair("map-base");
+  const mapPol = createMapPair("map-pol");
 
-  function mapViewState() {
+  function viewStateFrom(map) {
     const c = map.getCenter();
     return {
       longitude: c.lng,
@@ -248,133 +248,95 @@ try {
     };
   }
 
-  function buildLayers() {
-    const yr = +document.getElementById("year").value;
-    const layers = [];
-    if (simBase && simPol) {
-      const stA = simBase.snaps[yr];
-      const stB = simPol.snaps[yr];
-      layers.push(new ColumnLayer({
-        id: "cells-base",
-        data: columnData(stA, -LON_SHIFT),
-        diskResolution: 8,
-        radius: 280,
-        extruded: true,
-        pickable: false,
-        getPosition: (d) => d.position,
-        getFillColor: (d) => d.color,
-        getElevation: (d) => d.height,
-      }));
-      layers.push(new ColumnLayer({
-        id: "cells-pol",
-        data: columnData(stB, LON_SHIFT),
-        diskResolution: 8,
-        radius: 280,
-        extruded: true,
-        pickable: false,
-        getPosition: (d) => d.position,
-        getFillColor: (d) => d.color,
-        getElevation: (d) => d.height,
-      }));
-      const diff = diffData(stA, stB, LON_SHIFT);
-      if (diff.length) {
-        layers.push(new ColumnLayer({
-          id: "cells-diff",
-          data: diff,
-          diskResolution: 6,
-          radius: 340,
-          extruded: false,
-          pickable: false,
-          getPosition: (d) => d.position,
-          getFillColor: [240, 160, 80, 180],
-          getElevation: 1,
-        }));
-      }
-    }
-    if (plateauOn) {
-      layers.push(new Tile3DLayer({
-        id: "plateau-bldg",
-        data: PLATEAU_URL,
-        opacity: 0.35,
-        onTileError: () => {},
-      }));
-    }
-    return layers;
+  function syncFrom(source, target) {
+    if (syncing) return;
+    syncing = true;
+    target.jumpTo({
+      center: source.getCenter(),
+      zoom: source.getZoom(),
+      pitch: source.getPitch(),
+      bearing: source.getBearing(),
+    });
+    syncing = false;
+    refreshLayers();
   }
 
-  function syncDeck() {
-    if (!deckInstance) return;
-    deckInstance.setProps({ viewState: mapViewState(), layers: buildLayers() });
+  mapBase.on("move", () => syncFrom(mapBase, mapPol));
+  mapPol.on("move", () => syncFrom(mapPol, mapBase));
+
+  function buildLayers(st) {
+    return [new ColumnLayer({
+      id: "cells",
+      data: columnData(st),
+      diskResolution: 8,
+      radius: 320,
+      extruded: true,
+      pickable: false,
+      getPosition: (d) => d.position,
+      getFillColor: (d) => d.color,
+      getElevation: (d) => d.height,
+    })];
   }
 
-  deckInstance = new Deck({
-    canvas: "deck-canvas",
-    width: "100%",
-    height: "100%",
+  const deckBase = new Deck({
+    canvas: "deck-base",
     controller: false,
     useDevicePixels: true,
-    viewState: {
-      longitude: 139.72,
-      latitude: 35.66,
-      zoom: 9.2,
-      pitch: 50,
-      bearing: -15,
-    },
+    viewState: { longitude: TOKYO_CENTER[0], latitude: TOKYO_CENTER[1], zoom: 9.4, pitch: 48, bearing: -12 },
+    layers: [],
+  });
+  const deckPol = new Deck({
+    canvas: "deck-pol",
+    controller: false,
+    useDevicePixels: true,
+    viewState: { longitude: TOKYO_CENTER[0], latitude: TOKYO_CENTER[1], zoom: 9.4, pitch: 48, bearing: -12 },
     layers: [],
   });
 
-  function statsFromSt(st) {
-    let vac = 0, neg = 0, demo = 0, tot = 0;
-    for (let i = 0; i < N; i++) {
-      if (zone[i] < 0) continue;
-      if (st[i] === S_DEMO) { demo++; continue; }
-      tot++;
-      if (st[i] >= S_SALE && st[i] <= S_NEG) {
-        vac++;
-        if (st[i] === S_NEG) neg++;
+  function refreshLayers() {
+    const yr = +document.getElementById("year").value;
+    if (!simBase || !simPol) return;
+    const vs = viewStateFrom(mapBase);
+    deckBase.setProps({ viewState: vs, layers: buildLayers(simBase.snaps[yr]) });
+    deckPol.setProps({ viewState: vs, layers: buildLayers(simPol.snaps[yr]) });
+  }
+
+  function statsFromHist(sim, yr) {
+    if (yr === 0) {
+      let vac = 0, neg = 0, demo = 0, tot = 0;
+      const st = sim.snaps[0];
+      for (let i = 0; i < N; i++) {
+        if (zone[i] < 0) continue;
+        if (st[i] === S_DEMO) { demo++; continue; }
+        tot++;
+        if (st[i] >= S_SALE && st[i] <= S_NEG) { vac++; if (st[i] === S_NEG) neg++; }
       }
+      const d = tot + demo;
+      return { vac: tot ? vac / tot : 0, neg: tot ? neg / tot : 0, demo: d ? demo / d : 0 };
     }
-    const denom = tot + demo;
-    const nv2 = neighborVac({ st });
-    let s = 0, c = 0;
-    for (let i = 0; i < N; i++) {
-      if (zone[i] >= 0 && st[i] >= S_SALE && st[i] <= S_NEG) {
-        s += nv2[i];
-        c++;
-      }
-    }
-    const vr = tot ? vac / tot : 0;
-    const clu = c && vr > 0 ? s / c / vr : 0;
-    return { vac: vr, neg: tot ? neg / tot : 0, demo: denom ? demo / denom : 0, clu };
+    return {
+      vac: sim.hist.vac[yr - 1],
+      neg: sim.hist.neg[yr - 1],
+      demo: sim.hist.demo[yr - 1],
+    };
   }
 
   function refreshStats() {
     const yr = +document.getElementById("year").value;
     document.getElementById("yearLbl").textContent = String(yr);
     if (!simBase || !simPol) return;
-    renderLayers();
-    const stA = simBase.snaps[yr];
-    const stB = simPol.snaps[yr];
-    const sA = yr === 0 ? statsFromSt(stA) : {
-      vac: simBase.hist.vac[yr - 1],
-      neg: simBase.hist.neg[yr - 1],
-      demo: simBase.hist.demo[yr - 1],
-      clu: simBase.hist.clu[yr - 1],
-    };
-    const sB = yr === 0 ? statsFromSt(stB) : {
-      vac: simPol.hist.vac[yr - 1],
-      neg: simPol.hist.neg[yr - 1],
-      demo: simPol.hist.demo[yr - 1],
-      clu: simPol.hist.clu[yr - 1],
-    };
+    refreshLayers();
+    const sA = statsFromHist(simBase, yr);
+    const sB = statsFromHist(simPol, yr);
     document.getElementById("vacBase").textContent = pct(sA.vac);
     document.getElementById("negBase").textContent = pct(sA.neg);
     document.getElementById("demoBase").textContent = pct(sA.demo);
     document.getElementById("vacPol").textContent = pct(sB.vac);
     document.getElementById("negPol").textContent = pct(sB.neg);
     document.getElementById("demoPol").textContent = pct(sB.demo);
-    document.getElementById("clu").textContent = sB.clu.toFixed(2);
     let diff = 0;
+    const stA = simBase.snaps[yr];
+    const stB = simPol.snaps[yr];
     for (let i = 0; i < N; i++) {
       if (zone[i] < 0) continue;
       if (stA[i] !== stB[i]) diff++;
@@ -401,7 +363,6 @@ try {
         document.getElementById("year").value = "0";
         refreshStats();
       } catch (simErr) {
-        console.error(simErr);
         showErr("シミュレーションエラー: " + (simErr?.message || simErr));
       } finally {
         btnRun.disabled = false;
@@ -410,20 +371,15 @@ try {
     }, 0);
   }
 
-  map.on("move", syncDeck);
-  map.on("resize", () => {
-    if (deckInstance) deckInstance.setProps({ width: "100%", height: "100%" });
-    syncDeck();
-  });
-
-  map.on("load", () => {
-    syncDeck();
-  });
-
-  // UI（シミュレーション）は地図タイル読込と独立 — init 成功時点で束縛・実行
-  function renderLayers() {
-    syncDeck();
+  function resizeDecks() {
+    deckBase.setProps({ width: "100%", height: "100%" });
+    deckPol.setProps({ width: "100%", height: "100%" });
+    refreshLayers();
   }
+
+  mapBase.on("resize", resizeDecks);
+  mapPol.on("resize", resizeDecks);
+  window.addEventListener("resize", () => { mapBase.resize(); mapPol.resize(); });
 
   document.getElementById("year").oninput = refreshStats;
   document.getElementById("tax").oninput = (e) => {
@@ -464,16 +420,11 @@ try {
       refreshStats();
     }, 200);
   };
-  document.getElementById("plateau").onchange = (e) => {
-    plateauOn = e.target.checked;
-    renderLayers();
-  };
 
   runSimulation();
-
 } catch (err) {
   console.error(err);
-  showErr("初期化エラー: " + (err?.message || err) + "\n\nネットワークで CDN (jsdelivr) がブロックされていないか、DevTools Console を確認してください。");
+  showErr("初期化エラー: " + (err?.message || err));
 }
 })();
 </script>

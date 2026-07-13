@@ -5,6 +5,7 @@
     "harness": "node scripts/harness_60y.js",
     "harness:10y": "node scripts/harness_10y.js",
     "harness:60y": "node scripts/harness_60y.js",
+    "harness:audit": "node scripts/harness_audit.js",
     "smoke:map": "node scripts/smoke_map.js"
   },
   "devDependencies": {
