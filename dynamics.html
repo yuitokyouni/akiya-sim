@@ -54,6 +54,9 @@
   <div>
     <div class="panel">
       <h2>空き家率・更地率・放置率（%）</h2>
+      <p style="font-size:12px;color:var(--ink2);margin:0 0 8px">
+        縦軸は<strong>ベースライン固定</strong>（介入で更地が増えても黒線の形は動きません）。数値もベースは常に policy=0。
+      </p>
       <canvas class="chart" id="chartRate" width="900" height="220"></canvas>
       <div class="legend">
         <span><i class="sw" style="background:var(--a)"></i>空き家（ベース）</span>
@@ -175,13 +178,21 @@ function run() {
   const years = +document.getElementById("years").value || 60;
   const tax = +document.getElementById("tax").value;
   const sub = +document.getElementById("sub").value;
-  const A = simulate(seed, { tax: 0, sub: 0 }, years);
+
+  // ベースラインは seed・年数が変わったときだけ再計算（政策スライダーと無関係）
+  if (!run.cachedBase || run.cacheKey !== `${seed}:${years}`) {
+    run.cachedBase = simulate(seed, { tax: 0, sub: 0 }, years);
+    run.cacheKey = `${seed}:${years}`;
+  }
+  const A = run.cachedBase;
   const B = simulate(seed, { tax, sub }, years);
+
   const vacA = A.hist.vac.map((v) => v * 100);
   const vacB = B.hist.vac.map((v) => v * 100);
   const demoA = A.hist.demo.map((v) => v * 100);
   const demoB = B.hist.demo.map((v) => v * 100);
-  const yMax = Math.max(20, ...vacA, ...vacB, ...demoB) * 1.1;
+  // Y軸はベースラインのみから決定（介入でスケールが変わり黒線が動いて見えるバグを防止）
+  const yMax = Math.max(18, ...vacA, ...demoA) * 1.2;
   drawLines(document.getElementById("chartRate"), [vacA, vacB, demoA, demoB],
     ["#22313a", "#c04a2a", "#888", "#e08060"], [], yMax);
   drawStacked(document.getElementById("chartStock"), B.series.stocks);
