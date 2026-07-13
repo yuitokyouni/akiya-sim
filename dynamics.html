@@ -85,13 +85,20 @@
     .stat b { color: var(--text); }
     canvas#mapCanvas {
       width: 100%;
-      max-width: 504px;
-      aspect-ratio: 84 / 26;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      cursor: crosshair;
+      max-width: 640px;
       display: block;
       image-rendering: pixelated;
+      border: none;
+      border-radius: 0;
+      background: #0b1219;
+    }
+    .map-frame {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1219;
+      max-width: 640px;
+      cursor: crosshair;
     }
     .map-legend { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.35; }
     .map-legend span { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
@@ -154,6 +161,7 @@
   <script src="data/zone_grid.gen.js"></script>
   <script src="data/zones_vac.gen.js"></script>
   <script src="engine.js"></script>
+  <script src="ui/grid_map.js"></script>
 </head>
 <body>
   <header>
@@ -209,7 +217,9 @@
             <input type="range" id="yearSlider" min="0" max="30" value="0" style="margin-top:4px;"/>
           </label>
         </div>
-        <canvas id="mapCanvas" width="504" height="156"></canvas>
+        <div class="map-frame">
+        <canvas id="mapCanvas" width="800" height="260"></canvas>
+        </div>
         <div class="map-legend">
           <span style="background:#aeb9be;"></span>居住
           <span style="background:#8fa8a0;margin-left:6px;"></span>賃貸
@@ -387,36 +397,20 @@ function getActiveSnap() {
 
 function drawMap() {
   const snap = getActiveSnap();
-  mapCtx.fillStyle = "#0b1219";
-  mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
-  if (!snap) return;
-
-  const cw = mapCanvas.width / W;
-  const ch = mapCanvas.height / H;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = y * W + x;
-      if (zone[i] < 0) continue;
-      mapCtx.fillStyle = COLORS[snap.st[i]];
-      mapCtx.fillRect(x * cw, y * ch, cw - 0.5, ch - 0.5);
-    }
+  if (!snap) {
+    mapCtx.fillStyle = "#0b1219";
+    mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+    return;
   }
+  GridMapUI.drawGridMap(mapCanvas, snap, { pad: 14, bg: "#0b1219" });
 }
 
 function cellFromEvent(ev) {
   const snap = getActiveSnap();
   if (!snap) return null;
-  const rect = mapCanvas.getBoundingClientRect();
-  const sx = (ev.clientX - rect.left) * (mapCanvas.width / rect.width);
-  const sy = (ev.clientY - rect.top) * (mapCanvas.height / rect.height);
-  const cw = mapCanvas.width / W;
-  const ch = mapCanvas.height / H;
-  const gx = Math.floor(sx / cw);
-  const gy = Math.floor(sy / ch);
-  if (gx < 0 || gy < 0 || gx >= W || gy >= H) return null;
-  const i = gy * W + gx;
-  if (zone[i] < 0) return null;
-  return { i, snap, gx, gy };
+  const hit = GridMapUI.cellFromEvent(mapCanvas, ev, 14);
+  if (!hit) return null;
+  return { i: hit.i, snap, gx: hit.gx, gy: hit.gy };
 }
 
 function coLabel(v) {

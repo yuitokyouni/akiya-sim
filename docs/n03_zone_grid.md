@@ -43,7 +43,13 @@ node scripts/harness_60y.js          # golden 更新時は --golden で明示
 再生成後 `data/zone_grid.json` の `stats.by_zone` を参照。
 多摩東部は面積比でセル数が少なく、旧手描きシルエットより区部・多摩の境界が実境界に一致する。
 
-## 区市町村 → 6 地域
+## 表示（UI）
+
+格子マップ（`akiya_abm_tokyo.html` / `dynamics.html`）は `ui/grid_map.js` で
+**有効セル（zone≥0）の外接矩形にパディングを付けて描画**する。84×26 全体を
+キャンバス端まで伸ばさないため、北端・南端のシルエットが切れない。
+
+地図ビュー（`map.html`）は有効セル範囲で `fitBounds` し、シアン線でモデル対象域の外枠を表示する。
 
 対応表は [`zone_municipality_map.md`](zone_municipality_map.md) / `data/zone_municipality_map.json`。
 空間割当は N03、属性（mig 等）は別 CSV から engine の `ZONES` 定数へ反映。
