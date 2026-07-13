@@ -126,13 +126,15 @@
     <div class="map-container"><div id="map-pol" class="map"></div><canvas id="deck-pol" class="deck-canvas"></canvas></div>
   </div>
 </div>
-<div id="notice"><strong>様式化・統計的表示</strong> — 格子は N03 本土部マスク上に射影。住調2023 初期化。ホイールでズーム（全体表示ボタンで都域フィット）。</div>
+<div id="notice"><strong>様式化・統計的表示</strong> — シミュレーション格子は N03 本土部マスク（島嶼除外）。シアン枠＝モデル対象域。
+  住調2023 初期化。ホイールでズーム（全体表示で都域フィット）。</div>
 <div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
 <div id="js-err"></div>
 
 <script src="data/zone_grid.gen.js"></script>
 <script src="data/zones_vac.gen.js"></script>
 <script src="engine.js"></script>
+<script src="ui/grid_map.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.35/dist.min.js"></script>
 <script>
@@ -148,25 +150,49 @@ try {
   if (typeof maplibregl === "undefined") throw new Error("maplibre-gl の読み込みに失敗しました");
   if (typeof deck === "undefined") throw new Error("deck.gl の読み込みに失敗しました");
 
-  const { Deck, ColumnLayer } = deck;
-  const E = AkiyaEngine;
-  const { W, H, N, zone, COLORS, makeWorld, step, S_SALE, S_NEG, S_DEMO } = E;
+  if (typeof GridMapUI === "undefined") throw new Error("ui/grid_map.js が読み込めません");
 
-  const AFFINE = { lon0: 138.95, lon1: 139.93, latN: 35.82, latS: 35.53 };
-  const TOKYO_BOUNDS = [
-    [AFFINE.lon0 - 0.02, AFFINE.latS - 0.02],
-    [AFFINE.lon1 + 0.02, AFFINE.latN + 0.02],
-  ];
+  const { Deck, ColumnLayer, PathLayer } = deck;
+  const E = AkiyaEngine;
+  const { W, H, N, zone, COLORS, AFFINE, makeWorld, step, S_SALE, S_NEG, S_DEMO } = E;
+
+  const TOKYO_BOUNDS = GridMapUI.dataBoundsLngLat(0.02);
   const TOKYO_CENTER = [
-    (AFFINE.lon0 + AFFINE.lon1) / 2,
-    (AFFINE.latN + AFFINE.latS) / 2,
+    (TOKYO_BOUNDS[0][0] + TOKYO_BOUNDS[1][0]) / 2,
+    (TOKYO_BOUNDS[0][1] + TOKYO_BOUNDS[1][1]) / 2,
   ];
 
   function gridToLngLat(x, y) {
-    const lon = AFFINE.lon0 + (x / (W - 1)) * (AFFINE.lon1 - AFFINE.lon0);
-    const lat = AFFINE.latN - (y / (H - 1)) * (AFFINE.latN - AFFINE.latS);
-    return [lon, lat];
+    return GridMapUI.gridToLngLat(x, y, AFFINE, W, H);
   }
+
+  function buildSimOutline() {
+    const paths = [];
+    const active = (i) => zone[i] >= 0;
+    const dLon = ((AFFINE.lon1 - AFFINE.lon0) / (W - 1)) * 0.48;
+    const dLat = ((AFFINE.latN - AFFINE.latS) / (H - 1)) * 0.48;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if (!active(i)) continue;
+        const [lon, lat] = gridToLngLat(x, y);
+        if (y === 0 || !active((y - 1) * W + x)) {
+          paths.push({ path: [[lon - dLon, lat + dLat], [lon + dLon, lat + dLat]] });
+        }
+        if (y === H - 1 || !active((y + 1) * W + x)) {
+          paths.push({ path: [[lon - dLon, lat - dLat], [lon + dLon, lat - dLat]] });
+        }
+        if (x === 0 || !active(y * W + (x - 1))) {
+          paths.push({ path: [[lon - dLon, lat + dLat], [lon - dLon, lat - dLat]] });
+        }
+        if (x === W - 1 || !active(y * W + (x + 1))) {
+          paths.push({ path: [[lon + dLon, lat + dLat], [lon + dLon, lat - dLat]] });
+        }
+      }
+    }
+    return paths;
+  }
+  const SIM_OUTLINE = buildSimOutline();
 
   const CELLS = [];
   for (let y = 0; y < H; y++) {
@@ -230,8 +256,8 @@ try {
   let playTimer = null;
   let syncing = false;
   let fitZoom = 9.2;
-  const ZOOM_OUT_DELTA = 2.8;
-  const FIT_PADDING = 56;
+  const ZOOM_OUT_DELTA = 3.2;
+  const FIT_PADDING = { top: 72, bottom: 48, left: 48, right: 48 };
 
   function applyZoomLimits(map) {
     map.setMinZoom(Math.max(6.2, fitZoom - ZOOM_OUT_DELTA));
@@ -308,17 +334,28 @@ try {
   mapPol.on("move", () => syncFrom(mapPol, mapBase));
 
   function buildLayers(st) {
-    return [new ColumnLayer({
-      id: "cells",
-      data: columnData(st),
-      diskResolution: 8,
-      radius: 320,
-      extruded: true,
-      pickable: false,
-      getPosition: (d) => d.position,
-      getFillColor: (d) => d.color,
-      getElevation: (d) => d.height,
-    })];
+    return [
+      new PathLayer({
+        id: "sim-outline",
+        data: SIM_OUTLINE,
+        getPath: (d) => d.path,
+        getColor: [94, 234, 212, 140],
+        getWidth: 2,
+        widthUnits: "pixels",
+        pickable: false,
+      }),
+      new ColumnLayer({
+        id: "cells",
+        data: columnData(st),
+        diskResolution: 8,
+        radius: 280,
+        extruded: true,
+        pickable: false,
+        getPosition: (d) => d.position,
+        getFillColor: (d) => d.color,
+        getElevation: (d) => d.height,
+      }),
+    ];
   }
 
   const deckBase = new Deck({

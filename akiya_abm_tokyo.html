@@ -40,7 +40,8 @@
   @media(max-width:700px){.maps{grid-template-columns:1fr}}
   .mapbox h3{margin:0 0 6px;font-size:13px;font-weight:700}
   .mapbox h3 .tag{font-size:11px;font-weight:400;color:var(--ink2);margin-left:6px}
-  canvas.map{width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:4px;background:#fff}
+  canvas.map{width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:0;background:#e8ecf0;display:block}
+  .map-frame{overflow:hidden;border:1px solid var(--line);border-radius:4px;background:#e8ecf0}
   .stats{display:flex;gap:16px;margin-top:6px;font-size:12px;color:var(--ink2)}
   .stats b{color:var(--ink);font-size:14px}
   .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:10px 0 2px}
@@ -104,7 +105,7 @@
     <div class="maps" style="margin-top:10px">
       <div class="mapbox">
         <h3>ベースライン<span class="tag">政策なし</span></h3>
-        <canvas class="map" id="mapA" width="672" height="208"></canvas>
+        <div class="map-frame"><canvas class="map" id="mapA" width="800" height="260"></canvas></div>
         <div class="stats">
           <span>空き家率 <b class="num" id="vacA">–</b></span>
           <span>放置 <b class="num" id="negA">–</b></span>
@@ -114,7 +115,7 @@
       </div>
       <div class="mapbox">
         <h3>介入ワールド<span class="tag" id="polTag">税 0% ・ 補助 0万円</span></h3>
-        <canvas class="map" id="mapB" width="672" height="208"></canvas>
+        <div class="map-frame"><canvas class="map" id="mapB" width="800" height="260"></canvas></div>
         <div class="stats">
           <span>空き家率 <b class="num" id="vacB">–</b></span>
           <span>放置 <b class="num" id="negB">–</b></span>
@@ -133,6 +134,7 @@
 <script src="data/zone_grid.gen.js"></script>
 <script src="data/zones_vac.gen.js"></script>
 <script src="engine.js"></script>
+<script src="ui/grid_map.js"></script>
 <script>
 "use strict";
 const {
@@ -141,15 +143,7 @@ const {
 } = AkiyaEngine;
 
 function drawMap(w,cv){
-  const cx=cv.getContext("2d"),cw=cv.width/W,ch=cv.height/H;
-  cx.clearRect(0,0,cv.width,cv.height);
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
-    const i=y*W+x; if(zone[i]<0)continue;
-    cx.fillStyle=COLORS[w.st[i]];
-    cx.fillRect(x*cw,y*ch,cw-0.6,ch-0.6);
-  }
-  cx.fillStyle="#22313a";
-  for(const[sx,sy]of STATIONS){cx.beginPath();cx.arc((sx+.5)*cw,(sy+.5)*ch,4,0,7);cx.stroke();}
+  GridMapUI.drawGridMap(cv, w, { pad: 14, bg: "#e8ecf0", stations: STATIONS });
 }
 function drawChart(A,B){
   const cv=document.getElementById("chart"),cx=cv.getContext("2d");
