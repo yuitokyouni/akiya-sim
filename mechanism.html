@@ -62,6 +62,36 @@
   </section>
 
   <section>
+    <h2>Phase 1: 非経済経路（ステイマ・家計余裕・区切り解体）</h2>
+    <div class="panel">
+      <p style="margin:0 0 10px;font-size:13px">
+        損得だけでは説明しにくい行動を、家計余裕 <code>ownerWealth = loc × q × 地域所得</code> で簡易代理します。
+      </p>
+      <table>
+        <tr><th>経路</th><th>仮説</th><th>実装</th></tr>
+        <tr>
+          <td><strong>ステイマ</strong></td>
+          <td>経済的余裕がある層は周囲の目を気にし、長期放置しにくい</td>
+          <td><code>stigmaCost</code> が放置効用 <code>uNeg</code> を悪化（wealth&gt;0.42）。長期放置で <code>pDecide</code> も微増</td>
+        </tr>
+        <tr>
+          <td><strong>家計余裕不足</strong></td>
+          <td>前払いの改修・解体費が重く、行動できず放置に留まりやすい</td>
+          <td><code>cashStress = poorBar × (1−slack)</code> を賃貸・解体に加算。<strong>売却には掛けない</strong>（仲介は低コスト）</td>
+        </tr>
+        <tr>
+          <td><strong>区切り解体</strong></td>
+          <td>遠隔・共有名義・長期放置は「区切り」として解体を選びやすい</td>
+          <td><code>closureRelief</code> + 15年超の <code>structuralClosure</code>（老朽化）。長期放置では解体の現金ペナルティも緩和</td>
+        </tr>
+      </table>
+      <p style="margin:10px 0 0;font-size:13px;color:var(--ink2)">
+        ベースラインでも老朽・遠隔の区切り解体が少量発生。補助 <code>pol.sub</code> は従来どおり <code>uDemo</code> 専用。
+      </p>
+    </div>
+  </section>
+
+  <section>
     <h2>因果経路（年1回の所有者意思決定）</h2>
     <div class="flow">
       <div class="box">空き家セル <code>S_SALE|S_LIST|S_NEG</code></div>
@@ -70,7 +100,10 @@
         ① <code>holdTax = (holdCost + tax/100×資産価値) × 10年</code> → 放置・売却の機会費用↑<br>
         ② <code>pDecide × (1 + 0.25×tax)</code> → 意思決定頻度↑（税通知の代理）</div>
       <div class="arrow">↓ 効用比較（+ノイズ）</div>
-      <div class="box">選択: 売却 <code>uSell</code> / 賃貸 <code>uRent</code> / 放置 <code>uNeg</code> / 解体 <code>uDemo</code></div>
+      <div class="box">選択: 売却 <code>uSell</code> / 賃貸 <code>uRent</code> / 放置 <code>uNeg</code> / 解体 <code>uDemo</code>
+        <br><span style="font-size:12px;color:var(--ink2)">
+          非経済: <code>uNeg</code> に <code>−stigmaCost</code>、<code>uRent/uDemo</code> に <code>−cashStress</code>、<code>uDemo</code> に <code>+closureRelief</code>
+        </span></div>
       <div class="box sub"><strong>解体補助 pol.sub</strong><br>
         唯一の経路: <code>uDemo = 更地価値 + … − (demoCost − pol.sub) − …</code><br>
         <code>holdTax</code> や <code>pDecide</code> には<strong>入らない</strong></div>
@@ -136,6 +169,8 @@ document.getElementById("btnAudit").onclick = () => {
     "・補助のみで更地が増える → uDemo 経路が機能",
     "・課税のみで更地が増えない → sub は uDemo 専用",
     "・課税で空き家↓ → holdTax / pDecide 経路",
+    "・放置は家計余裕の低い層に偏る（stigma / poorBar）",
+    "・ベースでも長期放置+老朽で更地が少量発生（closure）",
   ];
   document.getElementById("audit-out").textContent = lines.join("\n");
 };
