@@ -1,0 +1,310 @@
+{
+  "method": "walkforward",
+  "nickname": "大学受験過去問理論",
+  "description": "Wave t で初期化→5年シミュ→wave t+5 の地域別空き家率と比較。パラメータ更新は未知の次波を見せない。",
+  "zone_order": [
+    "西多摩",
+    "多摩中部",
+    "多摩東部",
+    "区部西",
+    "都心",
+    "城東"
+  ],
+  "acquired": "2026-07-14",
+  "hops": [
+    {
+      "from": 2008,
+      "to": 2013,
+      "years": 5
+    },
+    {
+      "from": 2013,
+      "to": 2018,
+      "years": 5
+    },
+    {
+      "from": 2018,
+      "to": 2023,
+      "years": 5
+    }
+  ],
+  "waves": {
+    "2008": {
+      "year": 2008,
+      "survey": "平成20年住宅・土地統計調査（2008年10月1日現在）",
+      "table": "居住世帯の有無(8区分)別住宅数―市区町村（東京都）",
+      "statInfId": "000007370942",
+      "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000007370942",
+      "overall": 0.11048030866105402,
+      "rates": [
+        0.11354666342825916,
+        0.10085301276019999,
+        0.1056591942310707,
+        0.10740677511401604,
+        0.14276630634851578,
+        0.11197347513580799
+      ],
+      "names": [
+        "西多摩",
+        "多摩中部",
+        "多摩東部",
+        "区部西",
+        "都心",
+        "城東"
+      ],
+      "zones": {
+        "西多摩": {
+          "vac_rate": 0.11354666342825916,
+          "total_dwellings": 164690,
+          "vacant_dwellings": 18700,
+          "municipality_count": 6
+        },
+        "多摩中部": {
+          "vac_rate": 0.10085301276019999,
+          "total_dwellings": 1286030,
+          "vacant_dwellings": 129700,
+          "municipality_count": 16
+        },
+        "多摩東部": {
+          "vac_rate": 0.1056591942310707,
+          "total_dwellings": 510320,
+          "vacant_dwellings": 53920,
+          "municipality_count": 6
+        },
+        "区部西": {
+          "vac_rate": 0.10740677511401604,
+          "total_dwellings": 2460180,
+          "vacant_dwellings": 264240,
+          "municipality_count": 10
+        },
+        "都心": {
+          "vac_rate": 0.14276630634851578,
+          "total_dwellings": 597620,
+          "vacant_dwellings": 85320,
+          "municipality_count": 5
+        },
+        "城東": {
+          "vac_rate": 0.11197347513580799,
+          "total_dwellings": 1743270,
+          "vacant_dwellings": 195200,
+          "municipality_count": 8
+        }
+      },
+      "municipality_count": 51
+    },
+    "2013": {
+      "year": 2013,
+      "survey": "平成25年住宅・土地統計調査（2013年10月1日現在）",
+      "table": "居住世帯の有無(8区分)別住宅数―市区町村（東京都）",
+      "statInfId": "000028111878",
+      "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000028111878",
+      "overall": 0.1108691623424759,
+      "rates": [
+        0.11769611054857347,
+        0.10214586681725381,
+        0.1205518308406395,
+        0.1119622198120029,
+        0.11712753315990622,
+        0.11028302318138174
+      ],
+      "names": [
+        "西多摩",
+        "多摩中部",
+        "多摩東部",
+        "区部西",
+        "都心",
+        "城東"
+      ],
+      "zones": {
+        "西多摩": {
+          "vac_rate": 0.11769611054857347,
+          "total_dwellings": 167890,
+          "vacant_dwellings": 19760,
+          "municipality_count": 6
+        },
+        "多摩中部": {
+          "vac_rate": 0.10214586681725381,
+          "total_dwellings": 1381260,
+          "vacant_dwellings": 141090,
+          "municipality_count": 16
+        },
+        "多摩東部": {
+          "vac_rate": 0.1205518308406395,
+          "total_dwellings": 542920,
+          "vacant_dwellings": 65450,
+          "municipality_count": 6
+        },
+        "区部西": {
+          "vac_rate": 0.1119622198120029,
+          "total_dwellings": 2655360,
+          "vacant_dwellings": 297300,
+          "municipality_count": 10
+        },
+        "都心": {
+          "vac_rate": 0.11712753315990622,
+          "total_dwellings": 622740,
+          "vacant_dwellings": 72940,
+          "municipality_count": 5
+        },
+        "城東": {
+          "vac_rate": 0.11028302318138174,
+          "total_dwellings": 1968390,
+          "vacant_dwellings": 217080,
+          "municipality_count": 8
+        }
+      },
+      "municipality_count": 51
+    },
+    "2018": {
+      "year": 2018,
+      "survey": "平成30年住宅・土地統計調査（2018年10月1日現在）",
+      "table": "第1-2表 居住世帯の有無(8区分)別住宅数（全国・都道府県・市区町村）",
+      "statInfId": "000031865669",
+      "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000031865669",
+      "overall": 0.10510696599365159,
+      "rates": [
+        0.10886478840033008,
+        0.10963315498115546,
+        0.10551308570914651,
+        0.10104867247109152,
+        0.11263271939328277,
+        0.10455928242861272
+      ],
+      "names": [
+        "西多摩",
+        "多摩中部",
+        "多摩東部",
+        "区部西",
+        "都心",
+        "城東"
+      ],
+      "zones": {
+        "西多摩": {
+          "vac_rate": 0.10886478840033008,
+          "total_dwellings": 169660,
+          "vacant_dwellings": 18470,
+          "municipality_count": 6
+        },
+        "多摩中部": {
+          "vac_rate": 0.10963315498115546,
+          "total_dwellings": 1403590,
+          "vacant_dwellings": 153880,
+          "municipality_count": 16
+        },
+        "多摩東部": {
+          "vac_rate": 0.10551308570914651,
+          "total_dwellings": 555950,
+          "vacant_dwellings": 58660,
+          "municipality_count": 6
+        },
+        "区部西": {
+          "vac_rate": 0.10104867247109152,
+          "total_dwellings": 2786380,
+          "vacant_dwellings": 281560,
+          "municipality_count": 10
+        },
+        "都心": {
+          "vac_rate": 0.11263271939328277,
+          "total_dwellings": 692250,
+          "vacant_dwellings": 77970,
+          "municipality_count": 5
+        },
+        "城東": {
+          "vac_rate": 0.10455928242861272,
+          "total_dwellings": 2041330,
+          "vacant_dwellings": 213440,
+          "municipality_count": 8
+        }
+      },
+      "municipality_count": 51
+    },
+    "2023": {
+      "year": 2023,
+      "survey": "令和5年住宅・土地統計調査（2023年10月1日現在）",
+      "table": "第1-2表 居住世帯の有無(8区分)別住宅数（市区町村）",
+      "statInfId": "000040209842",
+      "source": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040209842",
+      "overall": 0.10888395383428891,
+      "rates": [
+        0.11070336391437309,
+        0.10661433015095,
+        0.1107691790266707,
+        0.1094780669345669,
+        0.11700135685210312,
+        0.10626353392428656
+      ],
+      "names": [
+        "西多摩",
+        "多摩中部",
+        "多摩東部",
+        "区部西",
+        "都心",
+        "城東"
+      ],
+      "zones": {
+        "西多摩": {
+          "vac_rate": 0.11070336391437309,
+          "total_dwellings": 179850,
+          "vacant_dwellings": 19910,
+          "municipality_count": 6
+        },
+        "多摩中部": {
+          "vac_rate": 0.10661433015095,
+          "total_dwellings": 1485260,
+          "vacant_dwellings": 158350,
+          "municipality_count": 16
+        },
+        "多摩東部": {
+          "vac_rate": 0.1107691790266707,
+          "total_dwellings": 594660,
+          "vacant_dwellings": 65870,
+          "municipality_count": 6
+        },
+        "区部西": {
+          "vac_rate": 0.1094780669345669,
+          "total_dwellings": 2963790,
+          "vacant_dwellings": 324470,
+          "municipality_count": 10
+        },
+        "都心": {
+          "vac_rate": 0.11700135685210312,
+          "total_dwellings": 737000,
+          "vacant_dwellings": 86230,
+          "municipality_count": 5
+        },
+        "城東": {
+          "vac_rate": 0.10626353392428656,
+          "total_dwellings": 2221270,
+          "vacant_dwellings": 236040,
+          "municipality_count": 8
+        }
+      },
+      "municipality_count": 51
+    }
+  },
+  "compositionFrom": "2023_vac_types",
+  "negFrac": [
+    0.3521,
+    0.2242,
+    0.252,
+    0.2045,
+    0.1944,
+    0.2873
+  ],
+  "saleFrac": [
+    0.0412,
+    0.053,
+    0.0384,
+    0.0482,
+    0.0597,
+    0.0474
+  ],
+  "listFrac": [
+    0.5851,
+    0.7082,
+    0.699,
+    0.7387,
+    0.7342,
+    0.6574
+  ]
+}

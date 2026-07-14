@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空き家ダイナミクス — 地図ビュー</title>
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+  :root{
+    --ink:#e8ecef; --ink2:#9aa8b2; --panel:rgba(22,28,36,.92);
+    --line:#3a4654; --accent:#c04a2a;
+    --c-occ:#aeb9be; --c-rent:#8fa8a0; --c-list:#d9a441;
+    --c-neg:#c04a2a; --c-demo:#4a5560;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;display:flex;flex-direction:column;font-family:"Hiragino Sans","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;
+    font-size:14px;color:var(--ink);background:#121820}
+  #panel{flex-shrink:0;width:100%;background:var(--panel);border-bottom:1px solid var(--line);
+    padding:10px 14px 8px;z-index:10;backdrop-filter:blur(6px)}
+  #panel .panel-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+  #panel h1{margin:0;font-size:15px;font-weight:700}
+  #panel .panel-sub{margin:2px 0 0;font-size:11.5px;color:var(--ink2);line-height:1.45}
+  #panel .panel-controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
+  #panel .ctrl{min-width:120px;flex:1 1 140px;max-width:220px}
+  #panel .ctrl.wide{min-width:200px;max-width:360px;flex:2 1 240px}
+  #panel .ctrl label{display:flex;justify-content:space-between;font-size:11.5px;margin:0 0 3px;color:var(--ink2)}
+  #panel .ctrl input[type=range]{width:100%}
+  #panel .ctrl-btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding-bottom:2px}
+  #panel .panel-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;margin-top:8px;
+    padding-top:8px;border-top:1px solid var(--line)}
+  #map-wrap{flex:1;position:relative;display:flex;min-height:0}
+  .map-pane{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;border-right:2px solid var(--line)}
+  .map-pane:last-child{border-right:none}
+  .map-pane-label{text-align:center;font-size:12px;font-weight:600;padding:6px 0;
+    background:rgba(18,24,32,.9);z-index:2;flex-shrink:0}
+  .map-pane.pol .map-pane-label{color:#f0a080}
+  .map-container{position:relative;flex:1;min-height:0}
+  .map-container .map{width:100%;height:100%;background:#1a2332}
+  .map-container canvas.deck-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #panel p{margin:0}
+  label.row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin:8px 0 4px}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  input[type=number]{width:72px;padding:3px 6px;border:1px solid var(--line);border-radius:4px;
+    background:#0f141a;color:var(--ink);font:inherit}
+  .btns{display:flex;gap:6px;flex-wrap:wrap}
+  button{font:inherit;font-size:12.5px;padding:5px 12px;border:1px solid var(--ink);border-radius:4px;
+    background:var(--ink);color:#121820;cursor:pointer}
+  button.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  button:disabled{opacity:.45;cursor:default}
+  .stats{font-size:11.5px;color:var(--ink2);line-height:1.5;flex:1;min-width:240px}
+  .stats .world{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+  .stats .world div{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:11px}
+  .stats .world b{color:var(--ink);font-family:ui-monospace,monospace;display:block;font-size:12px}
+  .stats .pol-lbl{color:#f0a080}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--ink2);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:4px}
+  .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .glossary{font-size:10.5px;color:var(--ink2);line-height:1.45;flex:1;min-width:200px}
+  #notice{flex-shrink:0;font-size:11.5px;color:var(--ink2);
+    background:rgba(18,24,32,.95);border-top:1px solid var(--line);padding:6px 14px;z-index:10}
+  #tile-warn,#js-err{position:absolute;top:12px;right:12px;max-width:420px;font-size:11px;
+    background:rgba(18,24,32,.92);border-radius:6px;padding:6px 10px;z-index:11;display:none}
+  #tile-warn{color:#f0c080;border:1px solid #6a5030}
+  #js-err{color:#ffb4b4;border:1px solid #6a3030;white-space:pre-wrap}
+  .num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<aside id="panel">
+  <div class="panel-head">
+    <div>
+      <h1>空き家ダイナミクス <span style="font-weight:400;color:var(--ink2)">地図ビュー</span></h1>
+      <p class="panel-sub">左右に<strong>同一シード</strong>のベースライン／介入を並列表示。
+        <a href="mechanism.html">メカニズム</a> · <a href="dynamics.html">時系列</a> · <a href="index.html">トップ</a></p>
+    </div>
+    <div class="ctrl-btns">
+      <button type="button" id="btnRun">▶ 60年実行</button>
+      <button type="button" id="btnPlay" class="ghost">アニメ</button>
+      <button type="button" id="btnFit" class="ghost">全体表示</button>
+      <button type="button" id="btnReset" class="ghost">リセット</button>
+    </div>
+  </div>
+  <div class="panel-controls">
+    <div class="ctrl"><label>シード <input id="seed" type="number" value="42" style="width:64px"></label></div>
+    <div class="ctrl wide"><label>年 <span class="num" id="yearLbl">0</span></label>
+      <input type="range" id="year" min="0" max="60" step="1" value="0"></div>
+    <div class="ctrl wide"><label>空き家課税（介入） <span class="num" id="vTax">2.0%</span></label>
+      <input type="range" id="tax" min="0" max="3" step="0.1" value="2"></div>
+    <div class="ctrl wide"><label>解体補助（介入） <span class="num" id="vSub">150万</span></label>
+      <input type="range" id="sub" min="0" max="200" step="10" value="150"></div>
+  </div>
+  <div class="panel-foot">
+    <div class="stats">
+      <div class="world">
+        <div><span>ベースライン</span>
+          空き家 <b class="num" id="vacBase">–</b>
+          放置 <b class="num" id="negBase">–</b>
+          更地 <b class="num" id="demoBase">–</b></div>
+        <div><span class="pol-lbl">介入</span>
+          空き家 <b class="num" id="vacPol">–</b>
+          放置 <b class="num" id="negPol">–</b>
+          更地 <b class="num" id="demoPol">–</b></div>
+      </div>
+      差分セル <b class="num" id="diffN">–</b>
+    </div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--c-occ)"></i>居住</span>
+      <span><i class="sw" style="background:var(--c-rent)"></i>賃貸</span>
+      <span><i class="sw" style="background:var(--c-list)"></i>売出/募集</span>
+      <span><i class="sw" style="background:var(--c-neg)"></i>放置</span>
+      <span><i class="sw" style="background:var(--c-demo)"></i>更地</span>
+    </div>
+    <div class="glossary">
+      <strong>用語</strong> — 空き家＝売出+募集+放置。更地は解体後（再利用フロー未実装）。
+      補助スライダーは様式化（都の実補助上限は約10万／棟）。
+      <a href="docs/abm_audit.md" target="_blank" rel="noopener">監査</a>
+    </div>
+  </div>
+</aside>
+<div id="map-wrap">
+  <div class="map-pane" id="pane-base">
+    <div class="map-pane-label">ベースライン（政策なし）</div>
+    <div class="map-container"><div id="map-base" class="map"></div><canvas id="deck-base" class="deck-canvas"></canvas></div>
+  </div>
+  <div class="map-pane pol" id="pane-pol">
+    <div class="map-pane-label">介入</div>
+    <div class="map-container"><div id="map-pol" class="map"></div><canvas id="deck-pol" class="deck-canvas"></canvas></div>
+  </div>
+</div>
+<div id="notice"><strong>様式化・統計的表示</strong> — シミュレーション格子は N03 本土部マスク（島嶼除外）。シアン枠＝モデル対象域。
+  住調2023 初期化。ホイールでズーム（全体表示で都域フィット）。</div>
+<div id="tile-warn">背景タイル取得失敗 — カラム表示は継続</div>
+<div id="js-err"></div>
+
+<script src="data/zone_grid.gen.js"></script>
+<script src="data/zones_vac.gen.js"></script>
+<script src="engine.js"></script>
+<script src="ui/grid_map.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.35/dist.min.js"></script>
+<script>
+(function () {
+function showErr(msg) {
+  const el = document.getElementById("js-err");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+try {
+  if (typeof AkiyaEngine === "undefined") throw new Error("engine.js が読み込めません");
+  if (typeof maplibregl === "undefined") throw new Error("maplibre-gl の読み込みに失敗しました");
+  if (typeof deck === "undefined") throw new Error("deck.gl の読み込みに失敗しました");
+
+  if (typeof GridMapUI === "undefined") throw new Error("ui/grid_map.js が読み込めません");
+
+  const { Deck, ColumnLayer, PathLayer } = deck;
+  const E = AkiyaEngine;
+  const { W, H, N, zone, COLORS, AFFINE, makeWorld, step, S_SALE, S_NEG, S_DEMO } = E;
+
+  const TOKYO_BOUNDS = GridMapUI.dataBoundsLngLat(0.02);
+  const TOKYO_CENTER = [
+    (TOKYO_BOUNDS[0][0] + TOKYO_BOUNDS[1][0]) / 2,
+    (TOKYO_BOUNDS[0][1] + TOKYO_BOUNDS[1][1]) / 2,
+  ];
+
+  function gridToLngLat(x, y) {
+    return GridMapUI.gridToLngLat(x, y, AFFINE, W, H);
+  }
+
+  function buildSimOutline() {
+    const paths = [];
+    const active = (i) => zone[i] >= 0;
+    const dLon = ((AFFINE.lon1 - AFFINE.lon0) / (W - 1)) * 0.48;
+    const dLat = ((AFFINE.latN - AFFINE.latS) / (H - 1)) * 0.48;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = y * W + x;
+        if (!active(i)) continue;
+        const [lon, lat] = gridToLngLat(x, y);
+        if (y === 0 || !active((y - 1) * W + x)) {
+          paths.push({ path: [[lon - dLon, lat + dLat], [lon + dLon, lat + dLat]] });
+        }
+        if (y === H - 1 || !active((y + 1) * W + x)) {
+          paths.push({ path: [[lon - dLon, lat - dLat], [lon + dLon, lat - dLat]] });
+        }
+        if (x === 0 || !active(y * W + (x - 1))) {
+          paths.push({ path: [[lon - dLon, lat + dLat], [lon - dLon, lat - dLat]] });
+        }
+        if (x === W - 1 || !active(y * W + (x + 1))) {
+          paths.push({ path: [[lon + dLon, lat + dLat], [lon + dLon, lat - dLat]] });
+        }
+      }
+    }
+    return paths;
+  }
+  const SIM_OUTLINE = buildSimOutline();
+
+  const CELLS = [];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (zone[i] < 0) continue;
+      CELLS.push({ i, position: gridToLngLat(x, y) });
+    }
+  }
+
+  function hexRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255, 220];
+  }
+  function pct(v) { return (v * 100).toFixed(1) + "%"; }
+
+  function simulate(seed, policy, years) {
+    const w = makeWorld(seed, policy);
+    const snaps = [new Uint8Array(w.st)];
+    for (let t = 0; t < years; t++) {
+      step(w);
+      snaps.push(new Uint8Array(w.st));
+    }
+    return { hist: w.hist, snaps };
+  }
+
+  function columnData(st) {
+    return CELLS.map(({ i, position }) => ({
+      position,
+      color: hexRgb(COLORS[st[i]]),
+      height: 40 + (st[i] >= S_SALE && st[i] <= S_NEG ? 800 : st[i] === S_DEMO ? 200 : 400),
+      i,
+    }));
+  }
+
+  const MAP_STYLE = {
+    version: 8,
+    sources: {
+      gsi: {
+        type: "raster",
+        tiles: ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"],
+        tileSize: 256,
+        maxzoom: 18,
+        attribution: "地理院タイル",
+      },
+    },
+    layers: [{
+      id: "gsi",
+      type: "raster",
+      source: "gsi",
+      paint: {
+        "raster-brightness-min": 0.08,
+        "raster-brightness-max": 0.45,
+        "raster-saturation": -0.35,
+      },
+    }],
+  };
+
+  let simBase = null;
+  let simPol = null;
+  let playTimer = null;
+  let syncing = false;
+  let fitZoom = 9.2;
+  const ZOOM_OUT_DELTA = 3.2;
+  const FIT_PADDING = { top: 72, bottom: 48, left: 48, right: 48 };
+
+  function applyZoomLimits(map) {
+    map.setMinZoom(Math.max(6.2, fitZoom - ZOOM_OUT_DELTA));
+    map.setMaxZoom(fitZoom + 3);
+  }
+
+  function fitAllMaps(zoomOutExtra) {
+    mapBase.fitBounds(TOKYO_BOUNDS, { padding: FIT_PADDING, duration: 0 });
+    fitZoom = mapBase.getZoom() - (zoomOutExtra || 0);
+    mapBase.setZoom(fitZoom);
+    applyZoomLimits(mapBase);
+    applyZoomLimits(mapPol);
+    mapPol.jumpTo({
+      center: mapBase.getCenter(),
+      zoom: fitZoom,
+      pitch: mapBase.getPitch(),
+      bearing: mapBase.getBearing(),
+    });
+    refreshLayers();
+  }
+
+  function createMapPair(id) {
+    const map = new maplibregl.Map({
+      container: id,
+      style: MAP_STYLE,
+      center: TOKYO_CENTER,
+      zoom: 9.2,
+      pitch: 48,
+      bearing: -12,
+      antialias: true,
+      maxBounds: TOKYO_BOUNDS,
+    });
+    map.on("error", () => {
+      document.getElementById("tile-warn").style.display = "block";
+    });
+    map.on("load", () => {
+      if (id === "map-base") {
+        fitAllMaps(0.6);
+      } else {
+        refreshLayers();
+      }
+    });
+    return map;
+  }
+
+  const mapBase = createMapPair("map-base");
+  const mapPol = createMapPair("map-pol");
+
+  function viewStateFrom(map) {
+    const c = map.getCenter();
+    return {
+      longitude: c.lng,
+      latitude: c.lat,
+      zoom: map.getZoom(),
+      pitch: map.getPitch(),
+      bearing: map.getBearing(),
+    };
+  }
+
+  function syncFrom(source, target) {
+    if (syncing) return;
+    syncing = true;
+    target.jumpTo({
+      center: source.getCenter(),
+      zoom: source.getZoom(),
+      pitch: source.getPitch(),
+      bearing: source.getBearing(),
+    });
+    syncing = false;
+    refreshLayers();
+  }
+
+  mapBase.on("move", () => syncFrom(mapBase, mapPol));
+  mapPol.on("move", () => syncFrom(mapPol, mapBase));
+
+  function buildLayers(st) {
+    return [
+      new PathLayer({
+        id: "sim-outline",
+        data: SIM_OUTLINE,
+        getPath: (d) => d.path,
+        getColor: [94, 234, 212, 140],
+        getWidth: 2,
+        widthUnits: "pixels",
+        pickable: false,
+      }),
+      new ColumnLayer({
+        id: "cells",
+        data: columnData(st),
+        diskResolution: 8,
+        radius: 280,
+        extruded: true,
+        pickable: false,
+        getPosition: (d) => d.position,
+        getFillColor: (d) => d.color,
+        getElevation: (d) => d.height,
+      }),
+    ];
+  }
+
+  const deckBase = new Deck({
+    canvas: "deck-base",
+    controller: false,
+    useDevicePixels: true,
+    viewState: { longitude: TOKYO_CENTER[0], latitude: TOKYO_CENTER[1], zoom: 9.4, pitch: 48, bearing: -12 },
+    layers: [],
+  });
+  const deckPol = new Deck({
+    canvas: "deck-pol",
+    controller: false,
+    useDevicePixels: true,
+    viewState: { longitude: TOKYO_CENTER[0], latitude: TOKYO_CENTER[1], zoom: 9.4, pitch: 48, bearing: -12 },
+    layers: [],
+  });
+
+  function refreshLayers() {
+    const yr = +document.getElementById("year").value;
+    if (!simBase || !simPol) return;
+    const vs = viewStateFrom(mapBase);
+    deckBase.setProps({ viewState: vs, layers: buildLayers(simBase.snaps[yr]) });
+    deckPol.setProps({ viewState: vs, layers: buildLayers(simPol.snaps[yr]) });
+  }
+
+  function statsFromHist(sim, yr) {
+    if (yr === 0) {
+      let vac = 0, neg = 0, demo = 0, tot = 0;
+      const st = sim.snaps[0];
+      for (let i = 0; i < N; i++) {
+        if (zone[i] < 0) continue;
+        if (st[i] === S_DEMO) { demo++; continue; }
+        tot++;
+        if (st[i] >= S_SALE && st[i] <= S_NEG) { vac++; if (st[i] === S_NEG) neg++; }
+      }
+      const d = tot + demo;
+      return { vac: tot ? vac / tot : 0, neg: tot ? neg / tot : 0, demo: d ? demo / d : 0 };
+    }
+    return {
+      vac: sim.hist.vac[yr - 1],
+      neg: sim.hist.neg[yr - 1],
+      demo: sim.hist.demo[yr - 1],
+    };
+  }
+
+  function refreshStats() {
+    const yr = +document.getElementById("year").value;
+    document.getElementById("yearLbl").textContent = String(yr);
+    if (!simBase || !simPol) return;
+    refreshLayers();
+    const sA = statsFromHist(simBase, yr);
+    const sB = statsFromHist(simPol, yr);
+    document.getElementById("vacBase").textContent = pct(sA.vac);
+    document.getElementById("negBase").textContent = pct(sA.neg);
+    document.getElementById("demoBase").textContent = pct(sA.demo);
+    document.getElementById("vacPol").textContent = pct(sB.vac);
+    document.getElementById("negPol").textContent = pct(sB.neg);
+    document.getElementById("demoPol").textContent = pct(sB.demo);
+    let diff = 0;
+    const stA = simBase.snaps[yr];
+    const stB = simPol.snaps[yr];
+    for (let i = 0; i < N; i++) {
+      if (zone[i] < 0) continue;
+      if (stA[i] !== stB[i]) diff++;
+    }
+    document.getElementById("diffN").textContent = String(diff);
+  }
+
+  function runSimulation() {
+    const seed = +document.getElementById("seed").value || 42;
+    const tax = +document.getElementById("tax").value;
+    const sub = +document.getElementById("sub").value;
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+      document.getElementById("btnPlay").textContent = "アニメ";
+    }
+    const btnRun = document.getElementById("btnRun");
+    btnRun.disabled = true;
+    btnRun.textContent = "計算中…";
+    setTimeout(() => {
+      try {
+        simBase = simulate(seed, { tax: 0, sub: 0 }, 60);
+        simPol = simulate(seed, { tax, sub }, 60);
+        document.getElementById("year").value = "0";
+        refreshStats();
+      } catch (simErr) {
+        showErr("シミュレーションエラー: " + (simErr?.message || simErr));
+      } finally {
+        btnRun.disabled = false;
+        btnRun.textContent = "▶ 60年実行";
+      }
+    }, 0);
+  }
+
+  function resizeDecks() {
+    deckBase.setProps({ width: "100%", height: "100%" });
+    deckPol.setProps({ width: "100%", height: "100%" });
+    refreshLayers();
+  }
+
+  mapBase.on("resize", resizeDecks);
+  mapPol.on("resize", resizeDecks);
+  window.addEventListener("resize", () => { mapBase.resize(); mapPol.resize(); });
+
+  document.getElementById("year").oninput = refreshStats;
+  document.getElementById("tax").oninput = (e) => {
+    document.getElementById("vTax").textContent = (+e.target.value).toFixed(1) + "%";
+  };
+  document.getElementById("sub").oninput = (e) => {
+    document.getElementById("vSub").textContent = e.target.value + "万";
+  };
+  document.getElementById("tax").onchange = () => { if (simBase) runSimulation(); };
+  document.getElementById("sub").onchange = () => { if (simBase) runSimulation(); };
+  document.getElementById("btnRun").onclick = runSimulation;
+  document.getElementById("btnFit").onclick = () => fitAllMaps(0.6);
+  document.getElementById("btnReset").onclick = () => {
+    if (playTimer) clearInterval(playTimer);
+    playTimer = null;
+    document.getElementById("btnPlay").textContent = "アニメ";
+    document.getElementById("year").value = "0";
+    runSimulation();
+  };
+  document.getElementById("btnPlay").onclick = (e) => {
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+      e.target.textContent = "アニメ";
+      return;
+    }
+    if (!simBase) runSimulation();
+    let yr = +document.getElementById("year").value;
+    e.target.textContent = "停止";
+    playTimer = setInterval(() => {
+      yr++;
+      if (yr > 60) {
+        clearInterval(playTimer);
+        playTimer = null;
+        e.target.textContent = "アニメ";
+        return;
+      }
+      document.getElementById("year").value = String(yr);
+      refreshStats();
+    }, 200);
+  };
+
+  runSimulation();
+} catch (err) {
+  console.error(err);
+  showErr("初期化エラー: " + (err?.message || err));
+}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "akiya-sim",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/harness_10y.js && node scripts/harness_audit.js && node scripts/harness_60y.js && node scripts/harness_walkforward.js",
+    "harness": "node scripts/harness_60y.js",
+    "harness:10y": "node scripts/harness_10y.js",
+    "harness:60y": "node scripts/harness_60y.js",
+    "harness:audit": "node scripts/harness_audit.js",
+    "harness:walkforward": "node scripts/harness_walkforward.js",
+    "build:walkforward": "python3 scripts/build_zones_vac_walkforward.py",
+    "build:t5": "python3 scripts/build_vac_types_jyutaku2023.py && python3 scripts/build_demo_subsidy_muni.py",
+    "smoke:map": "node scripts/smoke_map.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^22.15.0"
+  }
+}

@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>空き家ABM — マクロ動態・所有者属性</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121a24;
+      --text: #e8eef6;
+      --muted: #9fb0c3;
+      --accent: #5eead4;
+      --border: #243244;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #101820, var(--bg));
+    }
+    header h1 { margin: 0 0 6px; font-size: 1.15rem; font-weight: 650; }
+    header p { margin: 0; color: var(--muted); font-size: 0.88rem; max-width: 920px; }
+    nav { margin-top: 8px; font-size: 0.85rem; }
+    nav a { color: var(--accent); margin-right: 14px; }
+    .wrap { display: flex; flex-direction: column; min-height: calc(100vh - 88px); }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      align-items: flex-start;
+    }
+    .toolbar .card { flex: 1 1 280px; margin-bottom: 0; max-width: 100%; }
+    .toolbar .card.map-card { flex: 1 1 360px; }
+    .toolbar .ctrl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px 12px;
+      align-items: end;
+    }
+    .toolbar .ctrl-grid label { margin: 0; }
+    .toolbar input[type="number"],
+    .toolbar input[type="range"] { width: 100%; }
+    .toolbar input[type="number"] {
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #0b1219;
+      color: var(--text);
+    }
+    main { padding: 14px 18px 28px; overflow: auto; flex: 1; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .card h2 { margin: 0 0 8px; font-size: 0.95rem; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin: 8px 0 4px; }
+    input[type="range"] { width: 100%; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button {
+      background: #1e3a4a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: #134e4a; }
+    .stat { font-size: 0.82rem; color: var(--muted); margin-top: 6px; }
+    .stat b { color: var(--text); }
+    canvas#mapCanvas {
+      width: 100%;
+      max-width: 640px;
+      display: block;
+      image-rendering: pixelated;
+      border: none;
+      border-radius: 0;
+      background: #0b1219;
+    }
+    .map-frame {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0b1219;
+      max-width: 640px;
+      cursor: crosshair;
+    }
+    .map-legend { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+    .map-legend span { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      display: none;
+      max-width: 300px;
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      background: rgba(8, 12, 18, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    #tooltip .tt-title { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+    #tooltip .tt-muted { color: var(--muted); }
+    .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+    .chart-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px 6px;
+    }
+    .chart-box h3 { margin: 0 0 6px; font-size: 0.88rem; font-weight: 600; }
+    .chart-box p { margin: 0 0 6px; font-size: 0.75rem; color: var(--muted); }
+    /* Chart.js は maintainAspectRatio:false 時、親の高さが固定されていないと canvas が際限なく伸びる */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      overflow: hidden;
+    }
+    .chart-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 18px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pill {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #1a2836;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+    .busy { opacity: 0.55; pointer-events: none; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="data/zone_grid.gen.js"></script>
+  <script src="data/zones_vac.gen.js"></script>
+  <script src="engine.js"></script>
+  <script src="ui/grid_map.js"></script>
+</head>
+<body>
+  <header>
+    <h1>マクロ動態・所有者属性 <span class="pill">dynamics</span></h1>
+    <p>
+      マクロ指標（空き家率・状態別ストック・年次遷移）に加え、<strong>空き家セルの所有者属性</strong>（平均年齢・遠隔・共有名義・愛着・放置年数）を時系列で表示します。
+      上部の格子にカーソルを合わせるとセル単位の状況がポップアップします。
+    </p>
+    <nav>
+      <a href="akiya_abm_tokyo.html">シミュレータ</a>
+      <a href="map.html">地図</a>
+      <a href="mechanism.html">メカニズム</a>
+      <a href="dynamics.html"><strong>動態</strong></a>
+    </nav>
+  </header>
+
+  <div id="tooltip"></div>
+
+  <div class="wrap">
+    <div class="toolbar">
+      <div class="card">
+        <h2>政策・実行</h2>
+        <div class="ctrl-grid">
+          <div>
+            <label>固定資産税（空き家） <span id="taxVal">2.0%</span></label>
+            <input type="range" id="tax" min="0" max="3" step="0.1" value="2"/>
+          </div>
+          <div>
+            <label>解体補助 <span id="subVal">150</span> 万円/棟</label>
+            <input type="range" id="sub" min="0" max="200" step="10" value="150"/>
+          </div>
+          <div>
+            <label>シード</label>
+            <input type="number" id="seed" value="42" min="1" max="99999"/>
+          </div>
+          <div>
+            <label>シミュレーション年数</label>
+            <input type="number" id="years" value="30" min="5" max="60"/>
+          </div>
+          <div class="row" style="align-items:flex-end;">
+            <button class="primary" id="runBtn">再計算</button>
+          </div>
+        </div>
+        <div class="stat" id="runStat">待機中</div>
+      </div>
+
+      <div class="card map-card">
+        <h2>格子マップ（ホバーで詳細）</h2>
+        <div class="row" style="margin-bottom:8px;gap:14px;">
+          <label style="margin:0;"><input type="radio" name="view" value="int" checked/> 介入</label>
+          <label style="margin:0;"><input type="radio" name="view" value="base"/> ベースライン</label>
+          <label style="margin:0;flex:1;min-width:160px;">表示年 <span id="yearLbl">0</span>
+            <input type="range" id="yearSlider" min="0" max="30" value="0" style="margin-top:4px;"/>
+          </label>
+        </div>
+        <div class="map-frame">
+        <canvas id="mapCanvas" width="800" height="260"></canvas>
+        </div>
+        <div class="map-legend">
+          <span style="background:#aeb9be;"></span>居住
+          <span style="background:#8fa8a0;margin-left:6px;"></span>賃貸
+          <span style="background:#d9a441;margin-left:6px;"></span>売出
+          <span style="background:#d9a441;margin-left:6px;"></span>募集
+          <span style="background:#c04a2a;margin-left:6px;"></span>放置
+          <span style="background:#e6e2d8;margin-left:6px;"></span>更地
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <div class="section-title">マクロ指標（% / 件数）</div>
+      <div class="charts" id="macroCharts"></div>
+
+      <div class="section-title">空き家所有者属性（時系列）</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin:-4px 0 12px;">
+        空き家状態（売出・募集・放置）のセルのみ集計。ダイナミクス上のマクロ率では見えないミクロ構造です。
+      </p>
+      <div class="charts" id="ownerCharts"></div>
+    </main>
+  </div>
+
+  <script>
+"use strict";
+const {
+  W, H, N, ZONES, zone, COLORS, makeWorld, step,
+  S_OCC, S_RENT, S_SALE, S_LIST, S_NEG, S_DEMO,
+} = AkiyaEngine;
+
+const ST_NAME = ["居住", "賃貸", "売出", "募集", "放置", "更地"];
+
+function isVacant(st) {
+  return st >= S_SALE && st <= S_NEG;
+}
+
+function policyFromUI() {
+  return {
+    tax: parseFloat(document.getElementById("tax").value),
+    sub: parseFloat(document.getElementById("sub").value),
+  };
+}
+
+function snapshotWorld(w) {
+  return {
+    st: w.st.slice(),
+    oAge: w.oAge.slice(),
+    oRemote: w.oRemote.slice(),
+    oCo: w.oCo.slice(),
+    attach: w.attach.slice(),
+    negYears: w.negYears.slice(),
+    loc: w.loc.slice(),
+    q: w.q.slice(),
+  };
+}
+
+function aggregateMetrics(snap) {
+  let occ = 0, rent = 0, sale = 0, list = 0, neg = 0, demo = 0, active = 0;
+  let vacN = 0, ageSum = 0, remoteN = 0, coSum = 0, attachSum = 0, negYSum = 0;
+
+  for (let i = 0; i < N; i++) {
+    if (zone[i] < 0) continue;
+    if (snap.st[i] === S_DEMO) { demo++; continue; }
+    active++;
+    const s = snap.st[i];
+    if (s === S_OCC) occ++;
+    else if (s === S_RENT) rent++;
+    else if (s === S_SALE) sale++;
+    else if (s === S_LIST) list++;
+    else if (s === S_NEG) neg++;
+
+    if (isVacant(s)) {
+      vacN++;
+      ageSum += snap.oAge[i];
+      if (snap.oRemote[i]) remoteN++;
+      coSum += snap.oCo[i];
+      attachSum += snap.attach[i];
+      negYSum += snap.negYears[i];
+    }
+  }
+
+  const vac = sale + list + neg;
+  const denom = active + demo;
+  return {
+    occ, rent, sale, list, neg, demo, active, vac,
+    vacRate: active ? (100 * vac / active) : 0,
+    negRate: active ? (100 * neg / active) : 0,
+    demoRate: denom ? (100 * demo / denom) : 0,
+    vacOwnerAge: vacN ? ageSum / vacN : null,
+    vacOwnerRemoteFrac: vacN ? remoteN / vacN : null,
+    vacOwnerCoMean: vacN ? coSum / vacN : null,
+    vacOwnerAttach: vacN ? attachSum / vacN : null,
+    vacNegYears: vacN ? negYSum / vacN : null,
+  };
+}
+
+function countTransition(before, after, from, to) {
+  let n = 0;
+  for (let i = 0; i < N; i++) {
+    if (zone[i] < 0) continue;
+    if (before[i] === from && after[i] === to) n++;
+  }
+  return n;
+}
+
+function simulateFull(seed, years, policy) {
+  const w = makeWorld(seed, policy);
+  const snaps = [snapshotWorld(w)];
+  const trans = [];
+
+  for (let t = 0; t < years; t++) {
+    const before = w.st.slice();
+    step(w);
+    snaps.push(snapshotWorld(w));
+    trans.push({
+      o2s: countTransition(before, w.st, S_OCC, S_SALE),
+      o2l: countTransition(before, w.st, S_OCC, S_LIST),
+      o2n: countTransition(before, w.st, S_OCC, S_NEG),
+      s2o: countTransition(before, w.st, S_SALE, S_OCC),
+      l2r: countTransition(before, w.st, S_LIST, S_RENT),
+      n2o: countTransition(before, w.st, S_NEG, S_OCC),
+      n2d: countTransition(before, w.st, S_NEG, S_DEMO),
+      any2neg: countTransition(before, w.st, S_OCC, S_NEG) +
+        countTransition(before, w.st, S_RENT, S_NEG),
+    });
+  }
+
+  return { snaps, metrics: snaps.map(aggregateMetrics), trans, hist: w.hist };
+}
+
+let baseCache = null;
+let intResult = null;
+let charts = [];
+let debounceTimer = null;
+
+/** ベースライン metrics の数値列から Y 軸範囲を決定（介入でスケールが変わらないよう固定） */
+function yBoundsFromBaseline(values) {
+  const vals = values.filter((v) => v != null);
+  if (!vals.length) return { yMin: 0, yMax: 1 };
+  let yMin = Math.min(...vals);
+  let yMax = Math.max(...vals);
+  const pad = (yMax - yMin) * 0.08 || 0.5;
+  return { yMin: Math.max(0, yMin - pad), yMax: yMax + pad };
+}
+
+function ensureBaseline(seed, years) {
+  const cacheKey = `${seed}:${years}`;
+  if (baseCache && baseCache.cacheKey === cacheKey) return;
+
+  const sim = simulateFull(seed, years, { tax: 0, sub: 0 });
+  const metrics = sim.metrics.map((m) => ({ ...m }));
+  const vacA = sim.hist.vac.map((v) => v * 100);
+  const demoA = sim.hist.demo.map((v) => v * 100);
+  const yMaxMacro = Math.max(18, ...vacA, ...demoA) * 1.15;
+
+  baseCache = {
+    cacheKey,
+    snaps: sim.snaps,
+    trans: sim.trans,
+    hist: sim.hist,
+    metrics,
+    yMaxMacro,
+  };
+}
+const mapCanvas = document.getElementById("mapCanvas");
+const mapCtx = mapCanvas.getContext("2d");
+
+function getActiveSnap() {
+  const view = document.querySelector('input[name="view"]:checked').value;
+  const t = parseInt(document.getElementById("yearSlider").value, 10);
+  const res = view === "base" ? baseCache : intResult;
+  if (!res || !res.snaps[t]) return null;
+  return res.snaps[t];
+}
+
+function drawMap() {
+  const snap = getActiveSnap();
+  if (!snap) {
+    mapCtx.fillStyle = "#0b1219";
+    mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+    return;
+  }
+  GridMapUI.drawGridMap(mapCanvas, snap, { pad: 14, bg: "#0b1219" });
+}
+
+function cellFromEvent(ev) {
+  const snap = getActiveSnap();
+  if (!snap) return null;
+  const hit = GridMapUI.cellFromEvent(mapCanvas, ev, 14);
+  if (!hit) return null;
+  return { i: hit.i, snap, gx: hit.gx, gy: hit.gy };
+}
+
+function coLabel(v) {
+  if (v <= 1) return "単独名義";
+  if (v === 2) return "2名共有";
+  return "3名以上共有";
+}
+
+function formatCellTooltip(hit) {
+  const { i, snap } = hit;
+  const st = snap.st[i];
+  const z = zone[i];
+  const zn = z >= 0 ? ZONES[z].n : "域外";
+  const lines = [
+    `<div class="tt-title">セル #${i} · ${ST_NAME[st] || st}</div>`,
+    `<div>地域: <b>${zn}</b> (zone ${z})</div>`,
+    `<div>所有者年齢 oAge: <b>${snap.oAge[i].toFixed(0)}</b> 歳</div>`,
+    `<div>遠隔所有者 oRemote: <b>${snap.oRemote[i] ? "はい" : "いいえ"}</b></div>`,
+    `<div>共有名義 oCo: <b>${snap.oCo[i]}</b>（${coLabel(snap.oCo[i])}）</div>`,
+    `<div>愛着 attach: <b>${snap.attach[i].toFixed(1)}</b></div>`,
+    `<div>放置年数 negYears: <b>${snap.negYears[i].toFixed(0)}</b></div>`,
+    `<div class="tt-muted">立地 loc: ${snap.loc[i].toFixed(2)} · 品質 q: ${snap.q[i].toFixed(2)}</div>`,
+  ];
+  if (isVacant(st)) {
+    lines.splice(2, 0, `<div style="color:#f87171;">空き家セル（所有者属性は下記グラフの集計対象）</div>`);
+  }
+  return lines.join("");
+}
+
+const tooltip = document.getElementById("tooltip");
+mapCanvas.addEventListener("mousemove", (ev) => {
+  const hit = cellFromEvent(ev);
+  if (!hit) {
+    tooltip.style.display = "none";
+    return;
+  }
+  tooltip.innerHTML = formatCellTooltip(hit);
+  tooltip.style.display = "block";
+  const pad = 12;
+  let left = ev.clientX + pad;
+  let top = ev.clientY + pad;
+  const tw = tooltip.offsetWidth || 260;
+  const th = tooltip.offsetHeight || 160;
+  if (left + tw > window.innerWidth - 8) left = ev.clientX - tw - pad;
+  if (top + th > window.innerHeight - 8) top = ev.clientY - th - pad;
+  tooltip.style.left = left + "px";
+  tooltip.style.top = top + "px";
+});
+mapCanvas.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+
+function destroyCharts() {
+  charts.forEach((c) => c.destroy());
+  charts = [];
+}
+
+function makeChart(canvas, cfg) {
+  const ch = new Chart(canvas, cfg);
+  charts.push(ch);
+  return ch;
+}
+
+function buildCharts(baseM, intM, intT, labels, yMaxMacro) {
+  destroyCharts();
+
+  const macroDefs = [
+    { id: "vacRate", title: "空き家率", sub: "売出+募集+放置 / 有効セル（縦軸はベースライン固定）", key: "vacRate", unit: "%", yMax: yMaxMacro },
+    { id: "negRate", title: "放置率", sub: "放置 / 有効セル（縦軸はベースライン固定）", key: "negRate", unit: "%", yMax: yMaxMacro * 0.6 },
+    { id: "demoRate", title: "更地率", sub: "更地 / 全セル（縦軸はベースライン固定）", key: "demoRate", unit: "%", yMax: yMaxMacro },
+    { id: "stocks", title: "状態別ストック（介入）", sub: "件数", stocks: true },
+    { id: "trans", title: "年次遷移（介入）", sub: "その年に発生した遷移件数", trans: true },
+  ];
+
+  const ownerDefs = [
+    { id: "ownerAge", title: "空き家・平均所有者年齢", sub: "oAge 平均（縦軸はベースライン固定）", key: "vacOwnerAge", unit: "歳" },
+    { id: "ownerRemote", title: "空き家・遠隔所有者率", sub: "oRemote=1 の割合（縦軸はベースライン固定）", key: "vacOwnerRemoteFrac", unit: "%", scale100: true },
+    { id: "ownerCo", title: "空き家・平均共有名義数", sub: "oCo 平均（縦軸はベースライン固定）", key: "vacOwnerCoMean", unit: "名" },
+    { id: "ownerAttach", title: "空き家・平均愛着", sub: "attach 平均（縦軸はベースライン固定）", key: "vacOwnerAttach", unit: "" },
+    { id: "ownerNegY", title: "空き家・平均放置年数", sub: "negYears 平均（縦軸はベースライン固定）", key: "vacNegYears", unit: "年" },
+  ];
+
+  function dualLineDataset(label, data, color, dashed) {
+    return {
+      label,
+      data,
+      borderColor: color,
+      backgroundColor: "transparent",
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.15,
+      borderDash: dashed ? [6, 4] : [],
+    };
+  }
+
+  function chartOptions(yTitle, yMin, yMax) {
+    const opt = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { labels: { color: "#9fb0c3", boxWidth: 12, font: { size: 10 } } },
+      },
+      scales: {
+        x: { ticks: { color: "#9fb0c3", maxTicksLimit: 12 }, grid: { color: "#24324444" } },
+        y: {
+          title: { display: !!yTitle, text: yTitle, color: "#9fb0c3" },
+          ticks: { color: "#9fb0c3" },
+          grid: { color: "#24324444" },
+        },
+      },
+    };
+    if (yMin != null) opt.scales.y.min = yMin;
+    if (yMax != null) opt.scales.y.max = yMax;
+    return opt;
+  }
+
+  function addChartBox(parent, def) {
+    const box = document.createElement("div");
+    box.className = "chart-box";
+    box.innerHTML =
+      `<h3>${def.title}</h3><p>${def.sub}</p>` +
+      `<div class="chart-wrap"><canvas id="c_${def.id}"></canvas></div>`;
+    parent.appendChild(box);
+    return document.getElementById("c_" + def.id);
+  }
+
+  const macroParent = document.getElementById("macroCharts");
+  const ownerParent = document.getElementById("ownerCharts");
+  macroParent.innerHTML = "";
+  ownerParent.innerHTML = "";
+
+  macroDefs.forEach((def) => {
+    const canvas = addChartBox(macroParent, def);
+    if (def.stocks) {
+      const keys = ["occ", "rent", "sale", "list", "neg", "demo"];
+      const names = ["居住", "賃貸", "売出", "募集", "放置", "更地"];
+      makeChart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: keys.map((k, j) => ({
+            label: names[j],
+            data: intM.map((m) => m[k]),
+            borderColor: COLORS[j],
+            backgroundColor: COLORS[j] + "33",
+            fill: true,
+            stack: "s",
+            pointRadius: 0,
+            tension: 0.1,
+          })),
+        },
+        options: chartOptions("件", 0),
+      });
+    } else if (def.trans) {
+      const keys = ["o2s", "o2l", "o2n", "s2o", "l2r", "n2o", "n2d"];
+      const names = ["居→売", "居→募", "居→放", "売→居", "募→賃", "放→居", "放→更"];
+      makeChart(canvas, {
+        type: "bar",
+        data: {
+          labels: labels.slice(1),
+          datasets: keys.map((k, j) => ({
+            label: names[j],
+            data: intT.map((t) => t[k]),
+            backgroundColor: COLORS[(j + 2) % COLORS.length] + "aa",
+          })),
+        },
+        options: chartOptions("件", 0),
+      });
+    } else {
+      const mapVal = (m) => (m[def.key] != null ? +m[def.key].toFixed(2) : null);
+      const bData = baseM.map(mapVal);
+      const iData = intM.map(mapVal);
+      makeChart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            dualLineDataset("ベースライン", bData, "#64748b", true),
+            dualLineDataset("介入", iData, "#5eead4", false),
+          ],
+        },
+        options: chartOptions(def.unit, 0, def.yMax || undefined),
+      });
+    }
+  });
+
+  ownerDefs.forEach((def) => {
+    const canvas = addChartBox(ownerParent, def);
+    const mapVal = (m) => {
+      let v = m[def.key];
+      if (v == null) return null;
+      if (def.scale100) v *= 100;
+      return +v.toFixed(2);
+    };
+    const bData = baseM.map(mapVal);
+    const iData = intM.map(mapVal);
+    const { yMin, yMax } = yBoundsFromBaseline(bData);
+    makeChart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          dualLineDataset("ベースライン", bData, "#64748b", true),
+          dualLineDataset("介入", iData, "#f472b6", false),
+        ],
+      },
+      options: chartOptions(def.unit, yMin, yMax),
+    });
+  });
+}
+
+function refreshChartsAndMap(years) {
+  const labels = intResult.metrics.map((_, t) => String(t));
+  buildCharts(baseCache.metrics, intResult.metrics, intResult.trans, labels, baseCache.yMaxMacro);
+
+  const t0 = Math.min(parseInt(document.getElementById("yearSlider").value, 10), years);
+  document.getElementById("yearLbl").textContent = String(t0);
+  drawMap();
+
+  const m = intResult.metrics[years];
+  document.getElementById("runStat").innerHTML =
+    `完了: <b>${years}年</b> · 介入 空き家率 <b>${m.vacRate.toFixed(1)}%</b> · ` +
+    `所有者年齢(空き家) <b>${m.vacOwnerAge != null ? m.vacOwnerAge.toFixed(1) : "—"}</b> · ` +
+    `遠隔 <b>${m.vacOwnerRemoteFrac != null ? (100 * m.vacOwnerRemoteFrac).toFixed(0) : "—"}%</b>`;
+}
+
+/** 政策スライダー変更時: ベースラインは触らず介入のみ再計算 */
+function runInterventionOnly() {
+  const seed = parseInt(document.getElementById("seed").value, 10) || 42;
+  const years = parseInt(document.getElementById("years").value, 10) || 30;
+  const policy = policyFromUI();
+
+  document.getElementById("yearSlider").max = years;
+  document.getElementById("taxVal").textContent = policy.tax.toFixed(1) + "%";
+  document.getElementById("subVal").textContent = String(Math.round(policy.sub));
+
+  ensureBaseline(seed, years);
+  intResult = simulateFull(seed, years, policy);
+  refreshChartsAndMap(years);
+}
+
+function scheduleInterventionUpdate() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(runInterventionOnly, 120);
+}
+
+async function runSimulation() {
+  const btn = document.getElementById("runBtn");
+  const stat = document.getElementById("runStat");
+  const wrap = document.querySelector(".wrap");
+  btn.disabled = true;
+  wrap.classList.add("busy");
+  stat.textContent = "計算中…";
+
+  const seed = parseInt(document.getElementById("seed").value, 10) || 42;
+  const years = parseInt(document.getElementById("years").value, 10) || 30;
+  const policy = policyFromUI();
+
+  document.getElementById("yearSlider").max = years;
+  document.getElementById("taxVal").textContent = policy.tax.toFixed(1) + "%";
+  document.getElementById("subVal").textContent = String(Math.round(policy.sub));
+
+  await new Promise((r) => setTimeout(r, 0));
+
+  ensureBaseline(seed, years);
+  intResult = simulateFull(seed, years, policy);
+  refreshChartsAndMap(years);
+
+  btn.disabled = false;
+  wrap.classList.remove("busy");
+}
+
+document.getElementById("tax").addEventListener("input", () => {
+  document.getElementById("taxVal").textContent =
+    parseFloat(document.getElementById("tax").value).toFixed(1) + "%";
+  scheduleInterventionUpdate();
+});
+document.getElementById("sub").addEventListener("input", () => {
+  document.getElementById("subVal").textContent = document.getElementById("sub").value;
+  scheduleInterventionUpdate();
+});
+document.getElementById("seed").addEventListener("change", runSimulation);
+document.getElementById("years").addEventListener("change", runSimulation);
+document.getElementById("runBtn").addEventListener("click", runSimulation);
+document.getElementById("yearSlider").addEventListener("input", () => {
+  document.getElementById("yearLbl").textContent = document.getElementById("yearSlider").value;
+  drawMap();
+});
+document.querySelectorAll('input[name="view"]').forEach((el) => {
+  el.addEventListener("change", drawMap);
+});
+
+runSimulation();
+  </script>
+</body>
+</html>
