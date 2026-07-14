@@ -1,0 +1,7 @@
+---
+description: プロジェクト引き継ぎ規約
+alwaysApply: true
+---
+作業開始前に必ずルートの HANDOFF_akiya.md を読むこと。
+モデル仕様・検証規約(§7)・次タスク(§8)はこの文書が正。
+設計変更をしたら HANDOFF_akiya.md も同時に更新すること。
