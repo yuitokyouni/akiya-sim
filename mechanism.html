@@ -62,6 +62,33 @@
   </section>
 
   <section>
+    <h2>v0.4: ストック更新と相続分岐</h2>
+    <div class="panel">
+      <table>
+        <tr><th>過程</th><th>ナラティブ</th><th>実装</th></tr>
+        <tr>
+          <td><strong>相続分岐</strong></td>
+          <td>遠隔・共有ほど放置、それ以外は即売却/賃貸</td>
+          <td><code>inheritDisposition</code>（死亡直後）</td>
+        </tr>
+        <tr>
+          <td><strong>転出分岐</strong></td>
+          <td>引っ越しても必ずしも放置しない</td>
+          <td><code>moveSell / moveList / moveNeg</code></td>
+        </tr>
+        <tr>
+          <td><strong>更地再利用</strong></td>
+          <td>需要のある場所では建替・再入居でストック復帰</td>
+          <td><code>rebuild*</code>: <code>S_DEMO → S_OCC/S_RENT</code></td>
+        </tr>
+      </table>
+      <p style="margin:10px 0 0;font-size:13px;color:var(--ink2)">
+        主検証は住調ウォークフォワード（2008→2013→2018→2023）。政策つまみは副次。
+      </p>
+    </div>
+  </section>
+
+  <section>
     <h2>Phase 1: 非経済経路（社会的規範・家計余裕・区切り解体）</h2>
     <div class="panel">
       <p style="margin:0 0 10px;font-size:13px">

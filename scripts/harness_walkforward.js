@@ -15,7 +15,7 @@ const vm = require("vm");
 const root = path.join(__dirname, "..");
 const seed = Number((process.argv.find((a) => a.startsWith("--seed=")) || "--seed=42").split("=")[1]);
 const maeMax = Number((process.argv.find((a) => a.startsWith("--mae-max=")) || "--mae-max=0.08").split("=")[1]);
-const maeWarn = Number((process.argv.find((a) => a.startsWith("--mae-warn=")) || "--mae-warn=0.04").split("=")[1]);
+const maeWarn = Number((process.argv.find((a) => a.startsWith("--mae-warn=")) || "--mae-warn=0.035").split("=")[1]);
 
 const wavesPath = path.join(root, "data", "zones_vac_waves.json");
 if (!fs.existsSync(wavesPath)) {

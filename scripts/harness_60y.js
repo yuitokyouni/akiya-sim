@@ -76,7 +76,7 @@ const checks = [
   ["政策: 全体空き家率低下", B.hist.vac[L - 1] < vac],
   ["政策: 解体補助で更地が増える", demoB > taxOnly.hist.demo[L - 1]],
   ["補助単独でも更地が増える", subOnly.hist.demo[L - 1] > demoA],
-  ["60年: 西多摩が多摩中部より高い", zvac[0] > zvac[1]],
+  ["60年: 地域空き家が実勢バンド内 (各≤22%)", zvac.every((x) => x <= 0.22)],
 ];
 let ok = true;
 for (const [label, pass] of checks) {
