@@ -88,6 +88,7 @@ policy: {
 node scripts/harness_audit.js
 node scripts/harness_10y.js
 node scripts/harness_60y.js
+node scripts/harness_walkforward.js   # 大学受験過去問理論（2008→…→2023）
 ```
 
 ## 監査チェックリスト
@@ -95,6 +96,7 @@ node scripts/harness_60y.js
 - [x] tax / sub の独立効果を数値確認
 - [x] 更地が終端状態であることを文書化
 - [x] Phase 1 非経済経路（norm / poorBar / closure）を文書化
+- [x] ウォークフォワード検証ハーネス（住調2008/2013/2018/2023）
 - [ ] セル単位の遷移ログ（t6 で UI 化予定）
 - [ ] 解体率の実調査キャリブレーション（t5）
 - [ ] 土地利用政策の engine 拡張（t6/t7 と連動）
