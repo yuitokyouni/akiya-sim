@@ -59,7 +59,8 @@ python3 scripts/build_zones_vac_jyutaku2023.py
 | t=10 | 14.52% | 主ゲート: 10–16% レンジ |
 | t=60 | 12.60% | 副ゲート: 発散なし |
 
-検証: `node scripts/harness_10y.js`（主）、`node scripts/harness_60y.js`（副）。
+検証: `node scripts/harness_10y.js`（主）、`node scripts/harness_60y.js`（副）、
+`node scripts/harness_walkforward.js`（過去問・動学外挿）。詳細は `docs/validation_walkforward.md`。
 
 ### パラメータ調整（v0.3.3）
 
