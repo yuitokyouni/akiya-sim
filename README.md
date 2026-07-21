@@ -8,6 +8,7 @@
 
 | ページ | 説明 |
 |--------|------|
+| [うちの街は10年後…](index.html) | 市民向け検索＋4枚（いま＝観測値） |
 | [地図ビュー](map.html) | MapLibre + deck.gl、ベース/介入並列 |
 | [マクロ動態](dynamics.html) | 時系列・所有者属性・格子ホバー |
 | [メカニズム](mechanism.html) | 政策の因果経路 |
@@ -24,7 +25,8 @@
 
 ```bash
 python3 -m http.server 8765   # http://localhost:8765/
-npm test                      # 住調2023 + 政策監査 + 60年
+npm test                      # 住調2023 + 政策監査 + 60年 + walkforward + いま観測
+npm run build:ima             # 市区町村「いま」観測パック再生成
 ```
 
-詳細: [docs/DEPLOY.md](docs/DEPLOY.md) · [Handoff_akiya.md](Handoff_akiya.md)
+詳細: [docs/DEPLOY.md](docs/DEPLOY.md) · [Handoff_akiya.md](Handoff_akiya.md) · [docs/product_citizen_framing.md](docs/product_citizen_framing.md)

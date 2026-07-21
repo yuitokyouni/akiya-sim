@@ -3,69 +3,166 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>空き家政策シミュレータ — 都知事杯2026</title>
+  <title>うちの街は10年後どうなってる？ — 空き家のいま</title>
   <style>
-    :root { --bg:#0b0f14; --panel:#121a24; --text:#e8eef6; --muted:#9fb0c3; --accent:#5eead4; --border:#243244; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, "Noto Sans JP", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.55;
-      min-height: 100vh;
+    :root{
+      --ink:#1c2430; --muted:#5c6b7a; --line:#d5dde5; --paper:#f3f6f8;
+      --panel:#fff; --accent:#0f6a5a; --warn:#8a4b12; --soft:#e7f3ef;
     }
-    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 48px; }
-    h1 { margin: 0 0 8px; font-size: 1.5rem; }
-    p.lead { color: var(--muted); margin: 0 0 24px; }
-    .grid { display: grid; gap: 12px; }
-    a.card {
-      display: block;
-      text-decoration: none;
-      color: inherit;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px 18px;
-      transition: border-color .15s;
-    }
-    a.card:hover { border-color: var(--accent); }
-    a.card h2 { margin: 0 0 6px; font-size: 1.05rem; color: var(--accent); }
-    a.card p { margin: 0; font-size: 0.9rem; color: var(--muted); }
-    footer { margin-top: 28px; font-size: 0.8rem; color: var(--muted); }
-    code { font-size: 0.85em; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+      background:linear-gradient(180deg,#e8eef1 0%,var(--paper) 40%);color:var(--ink);line-height:1.65}
+    .wrap{max-width:720px;margin:0 auto;padding:28px 18px 64px}
+    header h1{margin:0;font-size:1.45rem;letter-spacing:.02em}
+    header p{margin:8px 0 0;color:var(--muted);font-size:.95rem}
+    .search{margin:22px 0 8px;position:relative}
+    .search input{width:100%;font:inherit;font-size:1.05rem;padding:14px 16px;border:1px solid var(--line);
+      border-radius:10px;background:var(--panel)}
+    .suggest{position:absolute;left:0;right:0;top:100%;background:var(--panel);border:1px solid var(--line);
+      border-radius:8px;margin-top:4px;max-height:240px;overflow:auto;display:none;z-index:5}
+    .suggest button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 14px;font:inherit;cursor:pointer}
+    .suggest button:hover{background:var(--soft)}
+    .hint{font-size:.82rem;color:var(--muted);margin:0 0 18px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+    .card h2{margin:0 0 6px;font-size:1rem}
+    .card .eyebrow{font-size:.75rem;color:var(--accent);letter-spacing:.04em;margin:0 0 4px}
+    .card .fact{font-size:1.05rem;margin:8px 0}
+    .card .meta{font-size:.8rem;color:var(--muted)}
+    .range{background:#f7faf9;border-left:3px solid var(--accent);padding:10px 12px;margin-top:8px;font-size:.92rem}
+    .locked{opacity:.92}
+    .locked .soon{display:inline-block;font-size:.72rem;background:#eef2f5;color:var(--muted);padding:2px 8px;border-radius:999px;margin-left:6px}
+    .actions a{color:var(--accent);margin-right:12px;font-size:.9rem}
+    footer{margin-top:28px;font-size:.78rem;color:var(--muted)}
+    .pill{display:inline-block;font-size:.72rem;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted);margin-right:6px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>空き家政策シミュレータ</h1>
-    <p class="lead">
-      東京都域の様式化 ABM。同一シードでベースラインと介入（空き家課税・解体補助）を比較します。
-      住調2023 で初期化、ハーネス検証済み。
-    </p>
-    <div class="grid">
-      <a class="card" href="map.html">
-        <h2>地図ビュー</h2>
-        <p>MapLibre + deck.gl。左右並列の 3D カラムマップ。メインデモ向け。</p>
-      </a>
-      <a class="card" href="dynamics.html">
-        <h2>マクロ動態・所有者属性</h2>
-        <p>時系列グラフ、空き家所有者のミクロ属性、格子ホバー。</p>
-      </a>
-      <a class="card" href="mechanism.html">
-        <h2>政策メカニズム</h2>
-        <p>課税・補助が効用のどの項に入るか。ブラウザ内監査。</p>
-      </a>
-      <a class="card" href="akiya_abm_tokyo.html">
-        <h2>格子シミュレータ（軽量）</h2>
-        <p>依存最小の 2 画面比較 + 年次チャート。</p>
-      </a>
+    <header>
+      <h1>うちの街は10年後どうなってる？</h1>
+      <p>まずは<strong>いまの事実</strong>から。予測は幅で、断定はしません。最後は「変えられること」で終わります。</p>
+    </header>
+
+    <div class="search">
+      <input id="q" type="search" placeholder="市区町村名または駅名（例: 世田谷区 / 吉祥寺）" autocomplete="off"/>
+      <div class="suggest" id="suggest"></div>
     </div>
+    <p class="hint">町丁目の空き家率は公開統計にないため、いまは<strong>市区町村／主要駅</strong>まで。ここに出す数字は観測値です。</p>
+
+    <div id="out" hidden>
+      <div class="card" id="card-now">
+        <p class="eyebrow">1 / いま · 事実</p>
+        <h2 id="placeName">—</h2>
+        <p class="fact" id="factVac"></p>
+        <p class="fact" id="factAge"></p>
+        <p class="fact" id="factPop"></p>
+        <p class="meta" id="factSrc"></p>
+      </div>
+
+      <div class="card locked" id="card-10y">
+        <p class="eyebrow">2 / このまま10年 <span class="soon">レンジ準備中</span></p>
+        <h2>断定しない将来像</h2>
+        <div class="range">
+          シミュレーションは「一本の正解」ではなく、<strong>前提つきの幅</strong>で出します。
+          キャリブレーションを満たすまでは、ここに実名の予測数字を置きません。
+        </div>
+      </div>
+
+      <div class="card locked" id="card-why">
+        <p class="eyebrow">3 / なぜ <span class="soon">仕組み</span></p>
+        <h2>相続のあと、放置が合理的になることがある</h2>
+        <p class="meta">遠隔・共有名義ほど動きにくく、余裕がないと改修・解体の前払いが重い——という構造説明（セル／ゾーンの流用）。</p>
+        <p class="actions"><a href="mechanism.html">仕組みの詳細</a></p>
+      </div>
+
+      <div class="card" id="card-act">
+        <p class="eyebrow">4 / 変えられること · 処方</p>
+        <h2>この街で使える制度と、「もし区がこうしたら」</h2>
+        <p class="fact" id="factSub"></p>
+        <p class="actions">
+          <a href="map.html">政策シミュレータ（地図）</a>
+          <a href="dynamics.html">10年の動きを見る</a>
+        </p>
+        <p class="meta">地域ランキングは作りません。悪い未来だけを切り出して終わりにもしません。</p>
+      </div>
+    </div>
+
     <footer>
-      公開 URL: <a href="https://yuitokyouni.github.io/akiya-sim/" style="color:var(--accent)">yuitokyouni.github.io/akiya-sim</a> ·
-      ローカル: <code>python3 -m http.server 8765</code> ·
-      検証: <code>npm test</code>
+      <span class="pill">予測ではない</span>
+      <span class="pill">ランキングなし</span>
+      <span class="pill">処方で終わる</span>
+      · 出典は選択後に表示 · <a href="docs/product_citizen_framing.md">方針</a>
+      · <a href="docs/validation_muni_obs_ima.md">観測パック</a>
     </footer>
   </div>
+
+<script src="data/muni_obs_ima.gen.js"></script>
+<script>
+"use strict";
+const DATA = globalThis.MUNI_OBS_IMA;
+const munis = DATA.municipalities;
+const stations = DATA.stations || [];
+
+function norm(s){ return (s||"").trim().toLowerCase().replace(/\s+/g,""); }
+
+function search(q){
+  const n = norm(q);
+  if(!n) return [];
+  const hits = [];
+  for(const s of stations){
+    const keys = [s.name, s.muni, ...(s.aliases||[])].map(norm);
+    if(keys.some(k => k.includes(n) || n.includes(k))){
+      const m = munis.find(x => x.name === s.muni);
+      if(m) hits.push({kind:"駅", label:`${s.name}駅 → ${s.muni}`, muni:m});
+    }
+  }
+  for(const m of munis){
+    if(norm(m.name).includes(n) || n.includes(norm(m.name))){
+      hits.push({kind:"市区町村", label:m.name, muni:m});
+    }
+  }
+  // dedupe by muni name
+  const seen = new Set();
+  return hits.filter(h => { if(seen.has(h.muni.name)) return false; seen.add(h.muni.name); return true; }).slice(0,8);
+}
+
+function show(m){
+  document.getElementById("out").hidden = false;
+  document.getElementById("placeName").textContent = `${m.name}（${m.zone}）`;
+  document.getElementById("factVac").textContent = m.copy_vac;
+  document.getElementById("factAge").textContent = m.copy_aging;
+  document.getElementById("factPop").textContent = m.copy_pop;
+  document.getElementById("factSrc").textContent =
+    `出典: 住調2023 · 人口の動きR6 · 住基年齢3区分R7/1/1` +
+    (m.vac_imputed ? " · ※一部町村は表集計外のため地域平均で代用" : "");
+  const sub = m.effective_max_man != null
+    ? `目安の解体関連補助上限はおよそ ${m.effective_max_man} 万円／件（区市町村＋都の様式化。要確認）。`
+    : `この自治体の補助制度は確認中です。相談窓口から入るのが確実です。`;
+  document.getElementById("factSub").textContent = sub;
+}
+
+const input = document.getElementById("q");
+const box = document.getElementById("suggest");
+input.addEventListener("input", () => {
+  const hits = search(input.value);
+  if(!hits.length){ box.style.display="none"; box.innerHTML=""; return; }
+  box.style.display="block";
+  box.innerHTML = hits.map((h,i)=>`<button type="button" data-i="${i}">${h.label}</button>`).join("");
+  box.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      const h = hits[+btn.dataset.i];
+      input.value = h.muni.name;
+      box.style.display="none";
+      show(h.muni);
+    };
+  });
+});
+input.addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){
+    const hits = search(input.value);
+    if(hits[0]){ input.value = hits[0].muni.name; box.style.display="none"; show(hits[0].muni); }
+  }
+});
+</script>
 </body>
 </html>

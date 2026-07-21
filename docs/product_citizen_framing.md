@@ -26,3 +26,10 @@
 
 実名地名に数字を出す前に、観測値キャリブが必須。  
 現状の6地域フィットだけでは町丁目実名表示は出さない。
+
+## 「いま」観測パック（実装済み）
+
+- 生成: `npm run build:ima` → `data/muni_obs_ima.{csv,json,gen.js}`
+- ゲート: `npm run harness:muni-ima`
+- 説明: `docs/validation_muni_obs_ima.md`
+- 検索単位: 市区町村／主要駅まで（町丁目の空き家率は未収録）
